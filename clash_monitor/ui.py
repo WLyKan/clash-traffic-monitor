@@ -18,10 +18,14 @@ ACTIVE = "#e0f0f6"
 GAP = "#a95216"
 MISSING = "#c0cbd9"
 HOUR_LABELS = tuple(f"{hour:02d}:00" for hour in range(24))
-TREND_LABELS = ("24 小时代理趋势", "最近 7 天", "最近 30 天")
+TREND_LABELS = ("24 小时代理趋势", "最近 7 天", "最近 30 天", "本周", "本月")
 
 
 def trend_start(index, today):
+    if index == 3:
+        return today - timedelta(days=today.weekday())
+    if index == 4:
+        return today.replace(day=1)
     return today - timedelta(days=(7, 30)[index - 1] - 1)
 
 

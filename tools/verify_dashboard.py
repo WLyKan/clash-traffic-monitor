@@ -85,6 +85,15 @@ def verify_dashboard(store, yesterday):
             root.update()
             assert dashboard.day == yesterday and dashboard.hour == 13
             assert dashboard.trend_index == 0 and dashboard.hour_picker.instate(["!disabled"])
+        today = date.today()
+        for index, first in ((3, today - timedelta(days=today.weekday())), (4, today.replace(day=1))):
+            dashboard.trend_picker.current(index)
+            dashboard.trend_picker.event_generate("<<ComboboxSelected>>")
+            root.update()
+            assert dashboard.days[0].day == first and dashboard.days[-1].day == today
+            expected = 4 if first <= yesterday else 0
+            assert len(dashboard.table.get_children()) == expected
+        print("PASS calendar week/month rankings: local Monday and first-of-month boundaries")
         print("PASS 7/30 day trends: cumulative ranking, date click drills down to hourly ranking")
         print("PASS SQLite dashboard: date changes, invalid date, click and keyboard hour selection, ranking, unknown app, gaps")
     finally:
