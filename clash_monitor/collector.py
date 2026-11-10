@@ -1,8 +1,10 @@
 from dataclasses import dataclass
+from queue import Empty, SimpleQueue
 import sqlite3
 import threading
 import time
 
+from .alerts import AlertSettings, SpikeDetector
 from .source import MihomoSource, Snapshot, SourceError
 from .storage import Store
 
@@ -57,6 +59,9 @@ class Collector:
         self._status = Status(False, "正在连接 Mihomo", self._last_sample, self.interval * 3.5)
         self._previous = None
         self._segment = None
+        self._alerts = SimpleQueue()
+        settings = store.load_alert_settings()
+        self._spike = SpikeDetector(AlertSettings(bool(settings[0]), settings[1]) if settings else AlertSettings())
         self._thread = threading.Thread(target=self._run, name="traffic-collector", daemon=True)
 
     def start(self) -> None:
@@ -70,6 +75,24 @@ class Collector:
     def status(self) -> Status:
         with self._lock:
             return self._status
+
+    def alert_settings(self):
+        with self._lock:
+            return self._spike.settings
+
+    def set_alert_settings(self, settings):
+        with self._lock:
+            if settings != self._spike.settings:
+                self.store.save_alert_settings(settings.enabled, settings.threshold_mib)
+                self._spike.settings = settings
+                self._spike.reset()
+                self.take_alert()
+
+    def take_alert(self):
+        try:
+            return self._alerts.get_nowait()
+        except Empty:
+            return None
 
     def _set_status(self, connected: bool, message: str) -> None:
         with self._lock:
@@ -97,12 +120,24 @@ class Collector:
                 self._segment = current.sampled_at
         except SourceError as error:
             self._previous = None
+            with self._lock:
+                self._spike.reset()
             self._set_status(False, str(error))
             return
         except (OSError, sqlite3.Error):
             self._previous = None
+            with self._lock:
+                self._spike.reset()
             self._set_status(False, "无法写入本地流量数据库，请检查数据目录")
             return
+
+        with self._lock:
+            if continuous:
+                alert = self._spike.add(previous.sampled_at, current.sampled_at, apps)
+                if alert is not None:
+                    self._alerts.put(alert)
+            else:
+                self._spike.reset()
 
         self._previous = current
         self._last_sample = current.sampled_at

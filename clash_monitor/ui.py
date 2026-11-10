@@ -6,6 +6,7 @@ import time
 import tkinter as tk
 from tkinter import messagebox, ttk
 
+from .alerts import AlertSettings, MAX_THRESHOLD_MIB
 from .storage import DETAIL_RETENTION, minute_bucket, minute_buckets
 
 
@@ -215,7 +216,32 @@ class Dashboard:
                     settings, text="登录 Windows 后启动并收起到托盘",
                     variable=enabled, command=change_startup,
                 ).pack(anchor="w")
-        ttk.Button(settings, text="关闭", command=window.destroy).pack(anchor="e", pady=(12, 0))
+        ttk.Separator(settings).pack(fill="x", pady=12)
+        alerts = self.collector.alert_settings()
+        alert_enabled = tk.BooleanVar(window, alerts.enabled)
+        threshold = tk.StringVar(window, str(alerts.threshold_mib))
+        ttk.Checkbutton(settings, text="启用代理流量突增提醒", variable=alert_enabled).pack(anchor="w")
+        row = ttk.Frame(settings)
+        row.pack(fill="x", pady=(6, 0))
+        ttk.Label(row, text="15 分钟阈值（MiB）").pack(side="left")
+        ttk.Entry(row, width=10, textvariable=threshold).pack(side="left", padx=6)
+        ttk.Label(settings, text="连续覆盖 15 分钟后生效，每 15 分钟最多提醒一次。").pack(anchor="w", pady=(6, 0))
+
+        def save():
+            try:
+                value = AlertSettings(alert_enabled.get(), int(threshold.get()))
+                self.collector.set_alert_settings(value)
+            except ValueError:
+                messagebox.showerror("设置", f"请输入 1–{MAX_THRESHOLD_MIB} 的整数阈值。", parent=window)
+            except DatabaseError:
+                messagebox.showerror("设置", "无法保存突增提醒设置。", parent=window)
+            else:
+                window.destroy()
+
+        buttons = ttk.Frame(settings)
+        buttons.pack(anchor="e", pady=(12, 0))
+        ttk.Button(buttons, text="取消", command=window.destroy).pack(side="left")
+        ttk.Button(buttons, text="保存提醒设置", command=save).pack(side="left", padx=(6, 0))
         window.grab_set()
 
     def _styles(self):
@@ -283,6 +309,13 @@ class Dashboard:
         self.hour = max(0, min(23, hour))
         self.hour_text.set(HOUR_LABELS[self.hour])
         self.refresh()
+
+    def show_alert(self, alert):
+        local = datetime.fromtimestamp(alert.peak_at)
+        self.select_date(local.date())
+        self.select_hour(local.hour)
+        self.minute_picker.current(local.minute // 5 + 1)
+        self._minute_change()
 
     def _reset_minute(self):
         self.minute = None

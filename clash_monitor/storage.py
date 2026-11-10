@@ -100,6 +100,11 @@ class Store:
                     down INTEGER NOT NULL,
                     PRIMARY KEY (bucket, segment)
                 );
+                CREATE TABLE IF NOT EXISTS spike_settings (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
+                    threshold_mib INTEGER NOT NULL CHECK (threshold_mib > 0)
+                );
                 CREATE TABLE IF NOT EXISTS checkpoint (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
                     sampled_at REAL NOT NULL
@@ -121,6 +126,17 @@ class Store:
         with closing(self._connect()) as db:
             row = db.execute("SELECT sampled_at FROM checkpoint WHERE id = 1").fetchone()
         return row[0] if row else None
+
+    def load_alert_settings(self):
+        with closing(self._connect()) as db:
+            return db.execute("SELECT enabled, threshold_mib FROM spike_settings WHERE id = 1").fetchone()
+
+    def save_alert_settings(self, enabled, threshold_mib):
+        with closing(self._connect()) as db, db:
+            db.execute("""
+                INSERT INTO spike_settings (id, enabled, threshold_mib) VALUES (1, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET enabled = excluded.enabled, threshold_mib = excluded.threshold_mib
+            """, (enabled, threshold_mib))
 
     def record(
         self,

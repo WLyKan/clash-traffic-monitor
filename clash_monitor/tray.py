@@ -1,10 +1,11 @@
 """Windows notification area and dashboard lifecycle."""
 
+from datetime import datetime
 from queue import Empty, SimpleQueue
 from threading import Thread
 import tkinter as tk
 
-from .ui import Dashboard, INK
+from .ui import Dashboard, INK, format_bytes
 
 
 def _tray_image():
@@ -17,6 +18,29 @@ def _tray_image():
     for x, y in ((17, 35), (28, 28), (39, 18)):
         draw.rounded_rectangle((x, y, x + 7, 43), radius=2, fill="#c5f2f3")
     return icon
+
+
+def _bind_notification_click(icon, callback):
+    # pystray 0.19.5 handles icon clicks but does not expose balloon activation.
+    from pystray._util import win32
+
+    original = icon._message_handlers[win32.WM_NOTIFY]
+    balloon_click = win32.WM_USER + 5  # NIN_BALLOONUSERCLICK
+
+    def handle(wparam, lparam):
+        if lparam == balloon_click:
+            callback()
+        else:
+            original(wparam, lparam)
+
+    icon._message_handlers[win32.WM_NOTIFY] = handle
+
+
+def _alert_message(alert):
+    start = datetime.fromtimestamp(alert.start).strftime("%m-%d %H:%M:%S")
+    end = datetime.fromtimestamp(alert.end).strftime("%m-%d %H:%M:%S")
+    apps = "、".join((app or "未知应用")[:25] for app in alert.contributors)
+    return f"{start}–{end}：{format_bytes(alert.total)}\n主要应用：{apps}"
 
 
 def run_dashboard(store, collector, *, start_hidden=False, startup=None):
@@ -32,6 +56,7 @@ def run_dashboard(store, collector, *, start_hidden=False, startup=None):
     actions = SimpleQueue()
     tray_ready = False
     stopping = False
+    latest_alert = None
 
     def show():
         root.deiconify()
@@ -58,12 +83,24 @@ def run_dashboard(store, collector, *, start_hidden=False, startup=None):
             stop()
 
     def handle_actions():
-        nonlocal tray_ready
+        nonlocal tray_ready, latest_alert
+        if tray_ready and not stopping:
+            alert = collector.take_alert()
+            if alert is not None:
+                latest_alert = alert
+                try:
+                    icon.update_menu()
+                    icon.notify(_alert_message(alert), "代理流量突增")
+                except OSError:
+                    dashboard.footer_text.set("系统通知暂不可用，可从托盘菜单查看最近提醒。")
         try:
             while not stopping:
                 action = actions.get_nowait()
                 if action == "show":
                     show()
+                elif action == "alert" and latest_alert is not None:
+                    show()
+                    dashboard.show_alert(latest_alert)
                 elif action == "stop":
                     stop()
                 elif action == "ready":
@@ -106,7 +143,9 @@ def run_dashboard(store, collector, *, start_hidden=False, startup=None):
     icon = pystray.Icon("clash-traffic-monitor", image, "Clash 流量监控", menu=pystray.Menu(
         pystray.MenuItem("打开流量监控", lambda: actions.put("show"), default=True),
         pystray.MenuItem("退出", lambda: actions.put("stop")),
+        pystray.MenuItem("查看最近提醒", lambda: actions.put("alert"), enabled=lambda item: latest_alert is not None),
     ))
+    _bind_notification_click(icon, lambda: actions.put("alert"))
     root.protocol("WM_DELETE_WINDOW", close)
     if start_hidden:
         root.withdraw()
