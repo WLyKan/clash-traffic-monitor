@@ -12,6 +12,7 @@ class Status:
     connected: bool
     message: str
     last_sample_at: float | None
+    gap_tolerance: float = 3.5
 
 
 def traffic_delta(previous: Snapshot, current: Snapshot):
@@ -53,7 +54,7 @@ class Collector:
         self._stop = threading.Event()
         self._lock = threading.Lock()
         self._last_sample = store.last_sample()
-        self._status = Status(False, "正在连接 Mihomo", self._last_sample)
+        self._status = Status(False, "正在连接 Mihomo", self._last_sample, self.interval * 3.5)
         self._previous = None
         self._thread = threading.Thread(target=self._run, name="traffic-collector", daemon=True)
 
@@ -71,7 +72,7 @@ class Collector:
 
     def _set_status(self, connected: bool, message: str) -> None:
         with self._lock:
-            self._status = Status(connected, message, self._last_sample)
+            self._status = Status(connected, message, self._last_sample, self.interval * 3.5)
 
     def poll(self) -> None:
         try:
@@ -86,7 +87,10 @@ class Collector:
             )
             if continuous:
                 apps, unknown_route, unmatched = traffic_delta(previous, current)
-                self.store.record(current.sampled_at, apps, unknown_route, unmatched=unmatched)
+                self.store.record(
+                    current.sampled_at, apps, unknown_route,
+                    unmatched=unmatched, covered_from=previous.sampled_at,
+                )
             else:
                 self.store.record(current.sampled_at, {}, (0, 0), self._last_sample)
         except SourceError as error:

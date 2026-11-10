@@ -1,5 +1,5 @@
 from contextlib import closing
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from pathlib import Path
 import sqlite3
@@ -14,6 +14,8 @@ class HourTraffic:
     unattributed_down: int = 0
     samples: int = 0
     gap_seconds: float = 0
+    covered_seconds: float = 0
+    legacy_coverage: bool = False
 
 
 @dataclass(frozen=True)
@@ -54,6 +56,12 @@ class Store:
                     sampled_at REAL NOT NULL
                 );
             """)
+            db.execute("BEGIN IMMEDIATE")
+            columns = {row[1] for row in db.execute("PRAGMA table_info(hours)")}
+            if "covered_seconds" not in columns:
+                db.execute("ALTER TABLE hours ADD COLUMN covered_seconds REAL NOT NULL DEFAULT 0")
+                db.execute("ALTER TABLE hours ADD COLUMN legacy_coverage INTEGER NOT NULL DEFAULT 0")
+                db.execute("UPDATE hours SET legacy_coverage = 1 WHERE samples > 0")
 
     def _connect(self):
         return sqlite3.connect(self.path, timeout=2)
@@ -71,6 +79,7 @@ class Store:
         gap_from: float | None = None,
         *,
         unmatched: tuple[int, int] = (0, 0),
+        covered_from: float | None = None,
     ) -> None:
         local = datetime.fromtimestamp(sampled_at)
         day, hour = local.date().isoformat(), local.hour
@@ -96,18 +105,29 @@ class Store:
                     INSERT INTO hours (day, hour, gap_seconds) VALUES (?, ?, ?)
                     ON CONFLICT(day, hour) DO UPDATE SET
                         gap_seconds = gap_seconds + excluded.gap_seconds
-                """, _gap_hours(gap_from, sampled_at))
+                """, _interval_hours(gap_from, sampled_at))
+            if covered_from is not None:
+                db.executemany("""
+                    INSERT INTO hours (day, hour, covered_seconds) VALUES (?, ?, ?)
+                    ON CONFLICT(day, hour) DO UPDATE SET
+                        covered_seconds = covered_seconds + excluded.covered_seconds
+                """, _interval_hours(covered_from, sampled_at))
             db.execute("""
                 INSERT INTO checkpoint (id, sampled_at) VALUES (1, ?)
                 ON CONFLICT(id) DO UPDATE SET sampled_at = excluded.sampled_at
             """, (sampled_at,))
 
-    def day_hours(self, day: date) -> list[HourTraffic]:
+    def day_hours(
+        self, day: date, *, as_of: float | None = None, gap_tolerance: float = 3.5,
+    ) -> list[HourTraffic]:
         with closing(self._connect()) as db:
+            db.execute("BEGIN")
+            checkpoint = db.execute("SELECT sampled_at FROM checkpoint WHERE id = 1").fetchone() if as_of is not None else None
             rows = db.execute("""
                 SELECT h.hour, COALESCE(a.up, 0), COALESCE(a.down, 0),
                        h.unattributed_up + MAX(0, h.unmatched_up),
-                       h.unattributed_down + MAX(0, h.unmatched_down), h.samples, h.gap_seconds
+                       h.unattributed_down + MAX(0, h.unmatched_down), h.samples, h.gap_seconds,
+                       h.covered_seconds, h.legacy_coverage
                 FROM hours h LEFT JOIN (
                     SELECT hour, SUM(uploaded) AS up, SUM(downloaded) AS down
                     FROM apps WHERE day = ? GROUP BY hour
@@ -115,6 +135,12 @@ class Store:
                 WHERE h.day = ?
             """, (day.isoformat(), day.isoformat())).fetchall()
         by_hour = {row[0]: HourTraffic(*row) for row in rows}
+        if checkpoint and as_of - checkpoint[0] > gap_tolerance:
+            start = max(checkpoint[0], datetime.combine(day, datetime.min.time()).timestamp())
+            end = min(as_of, datetime.combine(day + timedelta(days=1), datetime.min.time()).timestamp())
+            for _, hour, seconds in _interval_hours(start, end):
+                row = by_hour.get(hour, HourTraffic(hour))
+                by_hour[hour] = replace(row, gap_seconds=row.gap_seconds + seconds)
         return [by_hour.get(hour, HourTraffic(hour)) for hour in range(24)]
 
     def hour_apps(self, day: date, hour: int) -> list[AppTraffic]:
@@ -126,13 +152,12 @@ class Store:
         return [AppTraffic(app or None, uploaded, downloaded) for app, uploaded, downloaded in rows]
 
 
-def _gap_hours(start: float, end: float):
+def _interval_hours(start: float, end: float):
     while start < end:
         local = datetime.fromtimestamp(start)
-        next_hour = local.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
-        next_time = next_hour.timestamp()
-        if next_time <= start:
-            next_time = start + 3600
-        boundary = min(end, next_time)
+        elapsed = local.minute * 60 + local.second + local.microsecond / 1_000_000
+        boundary = min(end, start + 3600 - elapsed)
+        if boundary <= start:
+            break
         yield local.date().isoformat(), local.hour, boundary - start
         start = boundary

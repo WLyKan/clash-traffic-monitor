@@ -3,11 +3,11 @@
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from types import SimpleNamespace
 import sys
 import tkinter as tk
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from clash_monitor.collector import Status
 from clash_monitor.storage import Store
 from clash_monitor.ui import Dashboard, format_bytes
 from clash_monitor.tray import run_dashboard
@@ -17,7 +17,7 @@ class Collector:
     stopped = False
 
     def status(self):
-        return SimpleNamespace(connected=True, last_sample_at=None, message="")
+        return Status(connected=True, last_sample_at=None, message="")
 
     def stop(self):
         self.stopped = True
@@ -32,7 +32,9 @@ def seed_day(store, day):
     for hour in range(6, 16):
         timestamp = datetime.combine(day, time(hour, 5)).timestamp()
         unattributed = (4096, 768) if hour == 9 else (0, 0)
-        store.record(timestamp, traffic.get(hour, {}), unattributed, timestamp - 90 if hour == 9 else None)
+        if hour == 9:
+            store.record(timestamp - 1, {}, (0, 0), timestamp - 91)
+        store.record(timestamp, traffic.get(hour, {}), unattributed, covered_from=timestamp - 1)
 
 
 def verify_dashboard(store, yesterday):
@@ -41,7 +43,7 @@ def verify_dashboard(store, yesterday):
         dashboard = Dashboard(root, store, Collector())
         root.update()
         assert dashboard.day == date.today()
-        assert "0/24" in dashboard.day_quality.get()
+        assert "覆盖 0.00 分钟" in dashboard.day_quality.get()
         dashboard.date_text.set(yesterday.isoformat())
         dashboard.apply_date()
         root.update()
@@ -59,6 +61,9 @@ def verify_dashboard(store, yesterday):
         dashboard.chart.event_generate("<Right>")
         root.update()
         assert dashboard.hour == 10
+        assert "代理流量 0 B" in dashboard.hour_detail.get()
+        dashboard.select_hour(0)
+        assert "未采集" in dashboard.hour_detail.get()
         dashboard.hour_picker.current(13)
         dashboard.hour_picker.event_generate("<<ComboboxSelected>>")
         root.update()

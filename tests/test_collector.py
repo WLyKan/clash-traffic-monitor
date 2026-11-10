@@ -1,6 +1,8 @@
+from contextlib import closing
 from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
+import sqlite3
 import unittest
 
 from clash_monitor.collector import Collector, traffic_delta
@@ -114,6 +116,45 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual((day[5].uploaded, day[5].downloaded), (24, 39))
         self.assertEqual((day[5].unattributed_up, day[5].unattributed_down), (1, 4))
 
+    def test_coverage_splits_at_midnight_and_excludes_sleep_and_offline_time(self):
+        midnight = datetime(2026, 11, 11)
+        t = midnight.timestamp()
+        day = midnight.date()
+        prior = datetime.fromtimestamp(t - 1).date()
+        collector = Collector(ScriptedSource(
+            Snapshot(t - 1, 0, 0, ()),
+            Snapshot(t + 1, 0, 0, ()),
+            Snapshot(t + 61, 0, 0, ()),
+            SourceError("offline"),
+            Snapshot(t + 65, 0, 0, ()),
+            Snapshot(t + 66, 0, 0, ()),
+        ), self.store)
+        collector.poll()
+        collector.poll()
+        self.assertEqual(self.store.day_hours(prior)[23].covered_seconds, 1)
+        self.assertEqual(self.store.day_hours(day, as_of=t + 3)[0].gap_seconds, 0)
+        collector.poll()
+        collector.poll()
+        self.assertEqual(self.store.day_hours(day, as_of=t + 63, gap_tolerance=0)[0].gap_seconds, 62)
+        for _ in range(2):
+            collector.poll()
+        row = self.store.day_hours(day, as_of=t + 67)[0]
+        self.assertEqual((row.covered_seconds, row.gap_seconds, row.downloaded), (2, 64, 0))
+
+    def test_old_database_keeps_unknown_coverage_after_new_samples_in_same_hour(self):
+        # Remove the additive columns to reproduce the last released schema.
+        hour = datetime(2026, 11, 10, 5)
+        t = hour.timestamp()
+        self.store.record(t, {"legacy.exe": (12, 34)}, (0, 0))
+        with closing(sqlite3.connect(self.store.path)) as db, db:
+            db.execute("ALTER TABLE hours DROP COLUMN legacy_coverage")
+            db.execute("ALTER TABLE hours DROP COLUMN covered_seconds")
+        upgraded = Store(self.store.path)
+        upgraded.record(t + 2, {}, (0, 0), covered_from=t + 1)
+        row = Store(self.store.path).day_hours(hour.date())[5]
+        self.assertTrue(row.legacy_coverage)
+        self.assertEqual((row.covered_seconds, row.uploaded, row.downloaded), (1, 12, 34))
+
     def test_core_generation_change_does_not_count_old_or_new_baselines(self):
         day = datetime(2026, 11, 10, 8)
         start = day.timestamp()
@@ -125,6 +166,7 @@ class CollectorTests(unittest.TestCase):
         collector.poll()
         hour = self.store.day_hours(day.date())[8]
         self.assertEqual((hour.samples, hour.gap_seconds, hour.unattributed_up, hour.unattributed_down), (2, 1, 0, 0))
+        self.assertEqual(hour.covered_seconds, 0)
 
 
 if __name__ == "__main__":

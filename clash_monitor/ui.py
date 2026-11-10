@@ -2,6 +2,7 @@
 
 from datetime import date, datetime, timedelta
 from sqlite3 import Error as DatabaseError
+import time
 import tkinter as tk
 from tkinter import messagebox, ttk
 
@@ -256,7 +257,10 @@ class Dashboard:
             self.status_text.set(f"采集离线 · 上次{last}\n{problem}" if last else problem)
             self.status_label.configure(style="Error.TLabel")
         try:
-            self.hours = self.store.day_hours(self.day)
+            self.hours = self.store.day_hours(
+                self.day, as_of=time.time() if status.last_sample_at is not None else None,
+                gap_tolerance=status.gap_tolerance if status.connected else 0,
+            )
             if pick_historical_hour and self.hours:
                 chosen = max(self.hours, key=lambda row: (row.uploaded + row.downloaded, row.samples > 0))
                 self.hour = chosen.hour
@@ -274,14 +278,16 @@ class Dashboard:
     def _render_summary(self):
         uploaded = sum(row.uploaded for row in self.hours)
         downloaded = sum(row.downloaded for row in self.hours)
-        observed = sum(row.samples > 0 for row in self.hours)
+        covered = sum(row.covered_seconds for row in self.hours)
+        legacy = any(row.legacy_coverage for row in self.hours)
         gaps = sum(row.gap_seconds for row in self.hours)
         unattributed = sum(row.unattributed_up + row.unattributed_down for row in self.hours)
         self.day_total.set(format_bytes(uploaded + downloaded))
         self.day_download.set(format_bytes(downloaded))
         self.day_upload.set(format_bytes(uploaded))
         gap_text = f"　采集缺口 {format_gap(gaps)}" if gaps else ""
-        self.day_quality.set(f"已采集 {observed}/24 小时　未归因流量 {format_bytes(unattributed)}{gap_text}")
+        unknown = "（含旧记录，精确覆盖未知）" if legacy else ""
+        self.day_quality.set(f"采集覆盖 {covered / 60:.2f} 分钟{unknown}　未归因流量 {format_bytes(unattributed)}{gap_text}")
 
     def _plot_geometry(self):
         left, right = 76, self.chart.winfo_width() - 7
@@ -295,7 +301,8 @@ class Dashboard:
         top, bottom = 12, chart.winfo_height() - 26
         rows = {row.hour: row for row in self.hours}
         snapshot = tuple(
-            (row.hour, row.uploaded, row.downloaded, bool(row.samples), bool(row.gap_seconds)) for row in self.hours
+            (row.hour, row.uploaded, row.downloaded, bool(row.covered_seconds or row.legacy_coverage),
+             bool(row.gap_seconds)) for row in self.hours
         )
         key = (snapshot, self.hour, left, right, bottom)
         if key == self._chart_items:
@@ -317,7 +324,7 @@ class Dashboard:
             row = rows.get(hour)
             center = x + step / 2
             width = min(step * 0.56, 23)
-            if row and row.samples:
+            if row and (row.covered_seconds or row.legacy_coverage or row.uploaded or row.downloaded):
                 y = bottom
                 for value, color in ((row.downloaded, DOWNLOAD), (row.uploaded, UPLOAD)):
                     if value:
@@ -346,12 +353,20 @@ class Dashboard:
     def _render_rank(self, apps):
         hour = next((row for row in self.hours if row.hour == self.hour), None)
         period = f"{HOUR_LABELS[self.hour]}–{self.hour + 1:02d}:00"
-        if hour is None or hour.samples == 0:
-            description = "该时段暂无采样"
-        elif not apps:
-            description = "已采样，未观测到代理流量"
-        else:
+        if apps:
             description = f"{len(apps)} 项　代理合计 {format_bytes(hour.uploaded + hour.downloaded)}"
+        elif hour and hour.covered_seconds:
+            description = "已采集，代理流量 0 B"
+        elif hour and hour.legacy_coverage:
+            description = "旧记录，代理合计 0 B"
+        elif hour and hour.samples:
+            description = "已建立采样基线"
+        else:
+            description = "该时段未采集"
+        if hour and (hour.samples or hour.covered_seconds):
+            description += f"　覆盖 {hour.covered_seconds / 60:.2f} 分钟"
+            if hour.legacy_coverage:
+                description += "（旧记录覆盖未知）"
         if hour and hour.gap_seconds:
             description += f"　缺口 {format_gap(hour.gap_seconds)}"
         if hour and (hour.unattributed_up or hour.unattributed_down):
