@@ -19,6 +19,17 @@ class HourTraffic:
 
 
 @dataclass(frozen=True)
+class DayTraffic:
+    day: date
+    uploaded: int = 0
+    downloaded: int = 0
+    samples: int = 0
+    gap_seconds: float = 0
+    covered_seconds: float = 0
+    legacy_coverage: bool = False
+
+
+@dataclass(frozen=True)
 class AppTraffic:
     app: str | None
     uploaded: int
@@ -142,6 +153,33 @@ class Store:
                 row = by_hour.get(hour, HourTraffic(hour))
                 by_hour[hour] = replace(row, gap_seconds=row.gap_seconds + seconds)
         return [by_hour.get(hour, HourTraffic(hour)) for hour in range(24)]
+
+    def range_traffic(self, start: date, end: date) -> tuple[list[DayTraffic], list[AppTraffic]]:
+        bounds = (start.isoformat(), end.isoformat())
+        with closing(self._connect()) as db:
+            db.execute("BEGIN")
+            daily = db.execute("""
+                SELECT h.day, COALESCE(a.up, 0), COALESCE(a.down, 0),
+                       h.samples, h.gaps, h.coverage, h.legacy
+                FROM (
+                    SELECT day, SUM(samples) AS samples, SUM(gap_seconds) AS gaps,
+                           SUM(covered_seconds) AS coverage, MAX(legacy_coverage) AS legacy
+                    FROM hours WHERE day BETWEEN ? AND ? GROUP BY day
+                ) h LEFT JOIN (
+                    SELECT day, SUM(uploaded) AS up, SUM(downloaded) AS down
+                    FROM apps WHERE day BETWEEN ? AND ? GROUP BY day
+                ) a ON h.day = a.day
+            """, bounds + bounds).fetchall()
+            apps = db.execute("""
+                SELECT MIN(app), SUM(uploaded), SUM(downloaded)
+                FROM apps WHERE day BETWEEN ? AND ? GROUP BY app
+                ORDER BY SUM(uploaded + downloaded) DESC, app COLLATE NOCASE
+            """, bounds).fetchall()
+        by_day = {date.fromisoformat(day): DayTraffic(date.fromisoformat(day), *values) for day, *values in daily}
+        days = [start + timedelta(days=offset) for offset in range((end - start).days + 1)]
+        return [by_day.get(day, DayTraffic(day)) for day in days], [
+            AppTraffic(app or None, uploaded, downloaded) for app, uploaded, downloaded in apps
+        ]
 
     def hour_apps(self, day: date, hour: int) -> list[AppTraffic]:
         with closing(self._connect()) as db:

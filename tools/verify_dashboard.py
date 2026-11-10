@@ -74,6 +74,18 @@ def verify_dashboard(store, yesterday):
         dashboard.select_date(yesterday)
         dashboard.select_hour(9)
         root.update()
+        for index, count in ((1, 7), (2, 30)):
+            dashboard.trend_picker.current(index)
+            dashboard.trend_picker.event_generate("<<ComboboxSelected>>")
+            root.update()
+            assert len(dashboard.days) == count and dashboard.hour_picker.instate(["disabled"])
+            assert len(dashboard.table.get_children()) == 4
+            left, _, step = dashboard._plot_geometry()
+            dashboard.chart.event_generate("<Button-1>", x=round(left + step * (count - 1.5)), y=60)
+            root.update()
+            assert dashboard.day == yesterday and dashboard.hour == 13
+            assert dashboard.trend_index == 0 and dashboard.hour_picker.instate(["!disabled"])
+        print("PASS 7/30 day trends: cumulative ranking, date click drills down to hourly ranking")
         print("PASS SQLite dashboard: date changes, invalid date, click and keyboard hour selection, ranking, unknown app, gaps")
     finally:
         root.destroy()

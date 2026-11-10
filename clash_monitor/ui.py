@@ -18,6 +18,11 @@ ACTIVE = "#e0f0f6"
 GAP = "#a95216"
 MISSING = "#c0cbd9"
 HOUR_LABELS = tuple(f"{hour:02d}:00" for hour in range(24))
+TREND_LABELS = ("24 小时代理趋势", "最近 7 天", "最近 30 天")
+
+
+def trend_start(index, today):
+    return today - timedelta(days=(7, 30)[index - 1] - 1)
 
 
 def format_bytes(value):
@@ -44,6 +49,9 @@ class Dashboard:
         self.day = date.today()
         self.hour = datetime.now().hour
         self.hours = []
+        self.days = []
+        self.trend_index = 0
+        self.focus_day = 0
         self._table_rows = None
         self._chart_items = None
 
@@ -102,7 +110,10 @@ class Dashboard:
         trend = ttk.Frame(body, style="Paper.TFrame", padding=(14, 8, 14, 9))
         trend.grid(row=3, column=0, sticky="ew", pady=(0, 10))
         trend.grid_columnconfigure(0, weight=1)
-        ttk.Label(trend, text="24 小时代理趋势", style="Heading.TLabel").grid(row=0, column=0, sticky="w")
+        self.trend_picker = ttk.Combobox(trend, width=19, state="readonly", values=TREND_LABELS)
+        self.trend_picker.current(0)
+        self.trend_picker.grid(row=0, column=0, sticky="w")
+        self.trend_picker.bind("<<ComboboxSelected>>", self._trend_change)
         legend = ttk.Frame(trend, style="Paper.TFrame")
         legend.grid(row=0, column=0, sticky="e")
         for color, name in ((DOWNLOAD, "下载"), (UPLOAD, "上传"), (GAP, "采集缺口")):
@@ -117,10 +128,11 @@ class Dashboard:
         self.chart.grid(row=1, column=0, sticky="ew", pady=(3, 3))
         self.chart.bind("<Configure>", self._draw_chart)
         self.chart.bind("<Button-1>", self._chart_click)
-        self.chart.bind("<Left>", lambda event: self._chart_key(self.hour - 1))
-        self.chart.bind("<Right>", lambda event: self._chart_key(self.hour + 1))
+        self.chart.bind("<Left>", lambda event: self._chart_key(self._chart_selection() - 1))
+        self.chart.bind("<Right>", lambda event: self._chart_key(self._chart_selection() + 1))
         self.chart.bind("<Home>", lambda event: self._chart_key(0))
-        self.chart.bind("<End>", lambda event: self._chart_key(23))
+        self.chart.bind("<End>", lambda event: self._chart_key(self._chart_count() - 1))
+        self.chart.bind("<Return>", self._open_focused_day)
         self.day_quality = tk.StringVar()
         ttk.Label(trend, textvariable=self.day_quality, style="Caption.TLabel").grid(row=2, column=0, sticky="w")
 
@@ -130,7 +142,8 @@ class Dashboard:
         ranking.grid_rowconfigure(2, weight=1)
         ranking_title = ttk.Frame(ranking, style="Paper.TFrame")
         ranking_title.grid(row=0, column=0, columnspan=2, sticky="ew")
-        ttk.Label(ranking_title, text="应用排行", style="Heading.TLabel").pack(side="left")
+        self.ranking_title = tk.StringVar(value="应用排行")
+        ttk.Label(ranking_title, textvariable=self.ranking_title, style="Heading.TLabel").pack(side="left")
         self.hour_text = tk.StringVar(value=HOUR_LABELS[self.hour])
         self.hour_picker = ttk.Combobox(
             ranking_title, width=7, state="readonly", values=HOUR_LABELS, textvariable=self.hour_text
@@ -231,11 +244,26 @@ class Dashboard:
             self.select_date(next_day)
 
     def select_date(self, day):
+        self.trend_index = 0
+        self.trend_picker.current(0)
         self.day = day
         self.date_text.set(day.isoformat())
         self.date_error.set("")
         self.hour = datetime.now().hour if day == date.today() else 0
         self.refresh(pick_historical_hour=day < date.today())
+
+    def _trend_change(self, event=None):
+        self.trend_index = self.trend_picker.current()
+        self.focus_day = 0
+        self.refresh()
+        if self.days:
+            self.focus_day = len(self.days) - 1
+            self._draw_chart()
+
+    def _open_focused_day(self, event=None):
+        if self.trend_index and self.days:
+            self.select_date(self.days[self.focus_day].day)
+        return "break"
 
     def select_hour(self, hour):
         self.hour = max(0, min(23, hour))
@@ -256,7 +284,20 @@ class Dashboard:
             problem = status.message or "等待连接 Clash"
             self.status_text.set(f"采集离线 · 上次{last}\n{problem}" if last else problem)
             self.status_label.configure(style="Error.TLabel")
+        self.ranking_title.set("范围应用累计排行" if self.trend_index else "应用排行")
+        self.hour_picker.state(["disabled"] if self.trend_index else ["!disabled", "readonly"])
         try:
+            if self.trend_index:
+                end = date.today()
+                start = trend_start(self.trend_index, end)
+                self.days, apps = self.store.range_traffic(start, end)
+                self.focus_day = min(self.focus_day, len(self.days) - 1)
+                self._render_summary()
+                self._draw_chart()
+                self.hour_detail.set(f"{start:%Y-%m-%d} 至 {end:%Y-%m-%d}　{len(apps)} 项　选择日期查看小时")
+                self._render_rows(apps)
+                return
+            self.days = []
             self.hours = self.store.day_hours(
                 self.day, as_of=time.time() if status.last_sample_at is not None else None,
                 gap_tolerance=status.gap_tolerance if status.connected else 0,
@@ -269,6 +310,7 @@ class Dashboard:
             self._draw_chart()
             self._render_rank(self.store.hour_apps(self.day, self.hour))
         except DatabaseError:
+            self.days = []
             self.hours = []
             self._render_summary()
             self._draw_chart()
@@ -276,22 +318,32 @@ class Dashboard:
             self.day_quality.set("暂时无法读取本地流量记录")
 
     def _render_summary(self):
-        uploaded = sum(row.uploaded for row in self.hours)
-        downloaded = sum(row.downloaded for row in self.hours)
-        covered = sum(row.covered_seconds for row in self.hours)
-        legacy = any(row.legacy_coverage for row in self.hours)
-        gaps = sum(row.gap_seconds for row in self.hours)
-        unattributed = sum(row.unattributed_up + row.unattributed_down for row in self.hours)
+        rows = self.days if self.trend_index else self.hours
+        uploaded = sum(row.uploaded for row in rows)
+        downloaded = sum(row.downloaded for row in rows)
+        covered = sum(row.covered_seconds for row in rows)
+        legacy = any(row.legacy_coverage for row in rows)
+        gaps = sum(row.gap_seconds for row in rows)
         self.day_total.set(format_bytes(uploaded + downloaded))
         self.day_download.set(format_bytes(downloaded))
         self.day_upload.set(format_bytes(uploaded))
         gap_text = f"　采集缺口 {format_gap(gaps)}" if gaps else ""
         unknown = "（含旧记录，精确覆盖未知）" if legacy else ""
-        self.day_quality.set(f"采集覆盖 {covered / 60:.2f} 分钟{unknown}　未归因流量 {format_bytes(unattributed)}{gap_text}")
+        detail = ""
+        if not self.trend_index:
+            unattributed = sum(row.unattributed_up + row.unattributed_down for row in rows)
+            detail = f"　未归因流量 {format_bytes(unattributed)}"
+        self.day_quality.set(f"采集覆盖 {covered / 60:.2f} 分钟{unknown}{detail}{gap_text}")
+
+    def _chart_selection(self):
+        return self.focus_day if self.trend_index else self.hour
+
+    def _chart_count(self):
+        return max(1, len(self.days)) if self.trend_index else 24
 
     def _plot_geometry(self):
         left, right = 76, self.chart.winfo_width() - 7
-        return left, right, (right - left) / 24
+        return left, right, (right - left) / self._chart_count()
 
     def _draw_chart(self, event=None):
         chart = self.chart
@@ -299,12 +351,13 @@ class Dashboard:
         if step <= 0:
             return
         top, bottom = 12, chart.winfo_height() - 26
-        rows = {row.hour: row for row in self.hours}
+        rows = dict(enumerate(self.days)) if self.trend_index else {row.hour: row for row in self.hours}
         snapshot = tuple(
-            (row.hour, row.uploaded, row.downloaded, bool(row.covered_seconds or row.legacy_coverage),
-             bool(row.gap_seconds)) for row in self.hours
+            (index, row.uploaded, row.downloaded, bool(row.covered_seconds or row.legacy_coverage),
+             bool(row.gap_seconds)) for index, row in rows.items()
         )
-        key = (snapshot, self.hour, left, right, bottom)
+        selected = self._chart_selection()
+        key = (snapshot, tuple(row.day for row in self.days), self.trend_index, selected, left, right, bottom)
         if key == self._chart_items:
             return
         self._chart_items = key
@@ -317,11 +370,13 @@ class Dashboard:
             chart.create_line(left, y, right, y, fill=LINE, dash=(2, 4) if ratio else ())
             if high or ratio == 0:
                 chart.create_text(left - 7, y, anchor="e", text=format_bytes(round(high * ratio)), fill=MUTED, font=axis_font)
-        for hour in range(24):
-            x = left + hour * step
-            if hour == self.hour:
+        if self.trend_index and not self.days:
+            return
+        for index in range(self._chart_count()):
+            x = left + index * step
+            if index == selected:
                 chart.create_rectangle(x + 1, top, x + step - 1, bottom + 20, fill=ACTIVE, outline="")
-            row = rows.get(hour)
+            row = rows.get(index)
             center = x + step / 2
             width = min(step * 0.56, 23)
             if row and (row.covered_seconds or row.legacy_coverage or row.uploaded or row.downloaded):
@@ -337,17 +392,36 @@ class Dashboard:
                 chart.create_line(center - width / 2, bottom, center + width / 2, bottom, fill=MISSING, dash=(2, 2))
             if row and row.gap_seconds:
                 chart.create_line(center - width / 2, bottom + 3, center + width / 2, bottom + 3, fill=GAP, width=2)
-            if hour % 3 == 0 or hour == self.hour:
-                chart.create_text(center, bottom + 12, text=f"{hour:02d}", fill=INK if hour == self.hour else MUTED, font=axis_font)
+            if self.trend_index:
+                # Leave room for the focused date label between the regular ticks.
+                show_label = index == selected or (
+                    index % (1 if len(self.days) <= 7 else 5) == 0 and
+                    abs(index - selected) * step >= 35
+                )
+                label = self.days[index].day.strftime("%m-%d")
+            else:
+                show_label = index % 3 == 0 or index == selected
+                label = f"{index:02d}"
+            if show_label:
+                chart.create_text(center, bottom + 12, text=label, fill=INK if index == selected else MUTED, font=axis_font)
 
     def _chart_click(self, event):
         left, right, step = self._plot_geometry()
         if step > 0 and left <= event.x < right:
             self.chart.focus_set()
-            self.select_hour(int((event.x - left) / step))
+            index = int((event.x - left) / step)
+            if self.trend_index:
+                self.focus_day = index
+                self._open_focused_day()
+            else:
+                self.select_hour(index)
 
-    def _chart_key(self, hour):
-        self.select_hour(hour)
+    def _chart_key(self, index):
+        if self.trend_index:
+            self.focus_day = max(0, min(self._chart_count() - 1, index))
+            self._draw_chart()
+        else:
+            self.select_hour(index)
         return "break"
 
     def _render_rank(self, apps):
@@ -372,8 +446,11 @@ class Dashboard:
         if hour and (hour.unattributed_up or hour.unattributed_down):
             description += f"　未归因 {format_bytes(hour.unattributed_up + hour.unattributed_down)}"
         self.hour_detail.set(f"{period}　{description}")
+        self._render_rows(apps)
+
+    def _render_rows(self, apps):
         values = tuple((app.app, app.uploaded, app.downloaded) for app in apps)
-        key = (self.day, self.hour, values)
+        key = (self.trend_index, self.day, self.hour, values)
         if key == self._table_rows:
             return
         self._table_rows = key
