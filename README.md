@@ -1,33 +1,65 @@
 # Clash 流量监控
 
-Windows 本地托盘工具。按日期看每小时的代理流量，点击柱形查看该小时应用的下载、上传和合计排名。
+Windows 本地托盘工具，记录经过 Clash 的代理流量。可以按日期查看每小时的用量，选择某个小时查看各应用的下载、上传和合计排行。
 
-## 使用
+## 快速开始
 
-1. 确认 Clash Verge 正在运行，双击 `ClashTrafficMonitor.exe`。应用使用当前 Windows 用户的 Mihomo 命名管道自动连接。
-2. 选择日期后，点击某个小时的柱形，或在应用排行旁选小时。趋势区也支持方向键选择小时。
-3. 关闭窗口后，采集继续在通知区域运行。右键托盘图标可重新打开窗口或退出。如果图标折叠在 Windows 通知区域，可展开隐藏的图标查看。
+1. 启动 Clash Verge，再用同一 Windows 用户双击 `ClashTrafficMonitor.exe`。工具默认通过本机 Mihomo 命名管道连接。
+2. 在窗口中选择日期，再点击趋势图的小时柱形，或在应用排行旁选择小时。趋势图也支持用方向键切换小时。
+3. 关闭窗口后，工具继续在通知区域采集。右键托盘图标可重新打开窗口或退出。图标可能收在 Windows 的隐藏图标区。
 
-数据保存在 `%LOCALAPPDATA%\ClashTrafficMonitor\traffic.sqlite3`。每次采集按 Windows 本地时间归入日期和小时，只存汇总的字节与应用名。跨小时的流量按采样时间归入，边界精度约一秒。若连续采集中断，恢复后会标记缺口。停用期间和初次启动前的流量无法补录。
+历史从首次成功采集起算。退出工具会停止采集，重新打开后会继续写入原数据库。
 
-## 统计口径
+## 数据与统计口径
 
-- **代理合计**包含实际出站节点已识别为代理的流量。直连从趋势和排行剔除。
-- **未知应用**仍属于确认走代理的流量。优先使用 Mihomo 进程信息，缺失时用 Windows TCP 四元组匹配应用。
-- **未归因流量**包含内核总计中无法对应到活跃连接的字节，以及出口类型无法识别的字节。这部分可能含直连，单独展示。短连接或关闭前的最后一段流量可能落在这里。
-- **采集缺口**指连接控制接口、保存样本或采样连续性中断的区间。代理流量用于定位本机消耗，机场的账户用量以服务端为准。
+数据库位于 `%LOCALAPPDATA%\ClashTrafficMonitor\traffic.sqlite3`。按 Windows 本地日期和小时汇总，只保留流量字节、应用名及采集状态。默认采样间隔为一秒，跨小时的增量按采样时间归入对应小时。
+
+| 指标 | 含义 |
+| --- | --- |
+| 代理合计 | 实际出口确认走代理的上传与下载。直连从趋势和排行中剔除。 |
+| 未知应用 | 已确认走代理，但无法识别进程。优先使用 Mihomo 提供的进程信息，缺失时尝试用 Windows TCP 四元组匹配。 |
+| 未归因流量 | 未能对应到活跃连接的内核计数，或无法判断出口的连接字节。可能含直连或采样间隙里的短连接，单独展示。 |
+| 采集缺口 | 连续采集中断的时段，在恢复采集后标记。历史缺口无法补录。 |
+
+用本工具排查本机代理流量的来源。套餐消耗和余额以机场账户数据为准。
+
+## 启动参数与接入
+
+| 参数 | 用途 |
+| --- | --- |
+| `--start-hidden` | 启动后收在通知区域。 |
+| `--data-dir <目录>` | 指定独立的数据目录，适合本地开发和测试。 |
+| `--check` | 只读检查 Mihomo 连接，输出活跃连接、代理连接和已识别应用的数量。 |
+
+默认接入 Clash Verge。使用独立 Mihomo 时，可以设置 `CLASH_MONITOR_CONTROLLER` 和 `CLASH_MONITOR_SECRET`，控制地址必须是带端口的本机回环 HTTP 地址，并配置访问密钥。工具只调用只读接口。HTTP 接入通过断连或累计值回落识别核心重启。
+
+如果提示无法连接，先检查 Clash Verge 是否已启动、两个程序是否由同一 Windows 用户运行。如果已连接但用量为零，检查该时段是否有实际走代理的流量。首次采样会建立基线，后续采样才记录增量。
 
 ## 本地开发
 
-使用 Windows 和 Python 3.13。安装运行和打包依赖，运行单元测试，再生成 Windows x64 可执行文件。
+需要 Windows 和 Python 3.13。以下命令从项目根目录执行。
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -B -m clash_monitor --data-dir .\build\dev-data
+```
+
+在单独的终端执行验证。控制接口检查需要运行中的 Clash Verge。界面和托盘检查需要 Windows 桌面会话，使用独立的测试数据库。
+
+```powershell
 .\.venv\Scripts\python.exe -B -m unittest discover -s tests -v
 .\.venv\Scripts\python.exe -B .\tools\verify_dashboard.py --tray
 .\.venv\Scripts\python.exe -B -m clash_monitor --check
+```
+
+如需验证真实代理与直连对照，运行 `tools\verify_mihomo.py`。脚本启动隔离的 Mihomo，使用本机回环流量验证。内核路径与脚本默认值不同时，使用 `--core <路径>`。[验证记录](docs/verification.md)
+
+## 打包
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
 .\tools\build.ps1 -Python .\.venv\Scripts\python.exe
 ```
 
-通过 `--data-dir` 指定测试数据库目录，通过 `--start-hidden` 从托盘启动。若使用独立 Mihomo，可设置 `CLASH_MONITOR_CONTROLLER` 和 `CLASH_MONITOR_SECRET`，接口必须是本机回环 HTTP，且有访问密钥。应用只使用读取接口。HTTP 接入依靠断连或累计值回落识别核心重启。实测方法见 `docs/verification.md`。
+在 Windows x64 上生成 `dist\ClashTrafficMonitor.exe`。可用 `--data-dir` 指定测试目录，对打包版做独立的连接和托盘验收。
