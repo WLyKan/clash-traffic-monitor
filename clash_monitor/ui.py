@@ -6,6 +6,8 @@ import time
 import tkinter as tk
 from tkinter import messagebox, ttk
 
+from .storage import DETAIL_RETENTION, minute_bucket, minute_buckets
+
 
 BACKGROUND = "#eff4f9"
 PAPER = "#ffffff"
@@ -18,6 +20,7 @@ ACTIVE = "#e0f0f6"
 GAP = "#a95216"
 MISSING = "#c0cbd9"
 HOUR_LABELS = tuple(f"{hour:02d}:00" for hour in range(24))
+MINUTE_LABELS = ("整小时", *(f"{minute:02d}–{minute + 5:02d} 分" for minute in range(0, 60, 5)))
 TREND_LABELS = ("24 小时代理趋势", "最近 7 天", "最近 30 天", "本周", "本月")
 
 
@@ -56,6 +59,7 @@ class Dashboard:
         self.days = []
         self.trend_index = 0
         self.focus_day = 0
+        self.minute = None
         self._table_rows = None
         self._chart_items = None
 
@@ -155,6 +159,10 @@ class Dashboard:
         self.hour_picker.pack(side="right")
         ttk.Label(ranking_title, text="小时", style="Caption.TLabel").pack(side="right", padx=6)
         self.hour_picker.bind("<<ComboboxSelected>>", self._picker_change)
+        self.minute_picker = ttk.Combobox(ranking_title, width=11, state="readonly", values=MINUTE_LABELS)
+        self.minute_picker.current(0)
+        self.minute_picker.pack(side="right", padx=6)
+        self.minute_picker.bind("<<ComboboxSelected>>", self._minute_change)
         self.hour_detail = tk.StringVar()
         ttk.Label(ranking, textvariable=self.hour_detail, style="Caption.TLabel").grid(
             row=1, column=0, columnspan=2, sticky="w", pady=(3, 5)
@@ -250,6 +258,7 @@ class Dashboard:
     def select_date(self, day):
         self.trend_index = 0
         self.trend_picker.current(0)
+        self._reset_minute()
         self.day = day
         self.date_text.set(day.isoformat())
         self.date_error.set("")
@@ -270,8 +279,18 @@ class Dashboard:
         return "break"
 
     def select_hour(self, hour):
+        self._reset_minute()
         self.hour = max(0, min(23, hour))
         self.hour_text.set(HOUR_LABELS[self.hour])
+        self.refresh()
+
+    def _reset_minute(self):
+        self.minute = None
+        self.minute_picker.current(0)
+
+    def _minute_change(self, event=None):
+        index = self.minute_picker.current()
+        self.minute = (index - 1) * 5 if index > 0 else None
         self.refresh()
 
     def _picker_change(self, event):
@@ -289,7 +308,9 @@ class Dashboard:
             self.status_text.set(f"采集离线 · 上次{last}\n{problem}" if last else problem)
             self.status_label.configure(style="Error.TLabel")
         self.ranking_title.set("范围应用累计排行" if self.trend_index else "应用排行")
-        self.hour_picker.state(["disabled"] if self.trend_index else ["!disabled", "readonly"])
+        picker_state = ["disabled"] if self.trend_index else ["!disabled", "readonly"]
+        self.hour_picker.state(picker_state)
+        self.minute_picker.state(picker_state)
         try:
             if self.trend_index:
                 end = date.today()
@@ -302,9 +323,10 @@ class Dashboard:
                 self._render_rows(apps)
                 return
             self.days = []
+            now = time.time()
+            tolerance = status.gap_tolerance if status.connected else 0
             self.hours = self.store.day_hours(
-                self.day, as_of=time.time() if status.last_sample_at is not None else None,
-                gap_tolerance=status.gap_tolerance if status.connected else 0,
+                self.day, as_of=now if status.last_sample_at is not None else None, gap_tolerance=tolerance,
             )
             if pick_historical_hour and self.hours:
                 chosen = max(self.hours, key=lambda row: (row.uploaded + row.downloaded, row.samples > 0))
@@ -312,13 +334,19 @@ class Dashboard:
             self.hour_text.set(HOUR_LABELS[self.hour])
             self._render_summary()
             self._draw_chart()
-            self._render_rank(self.store.hour_apps(self.day, self.hour))
+            if self.minute is None:
+                row = self.hours[self.hour]
+                period = f"{HOUR_LABELS[self.hour]}–{self.hour + 1:02d}:00"
+                self._render_rank(self.store.hour_apps(self.day, self.hour), row, period)
+            else:
+                self._render_minute(now, tolerance)
         except DatabaseError:
             self.days = []
             self.hours = []
             self._render_summary()
             self._draw_chart()
-            self._render_rank([])
+            self._render_rows([])
+            self.hour_detail.set("")
             self.day_quality.set("暂时无法读取本地流量记录")
 
     def _render_summary(self):
@@ -428,9 +456,25 @@ class Dashboard:
             self.select_hour(index)
         return "break"
 
-    def _render_rank(self, apps):
-        hour = next((row for row in self.hours if row.hour == self.hour), None)
-        period = f"{HOUR_LABELS[self.hour]}–{self.hour + 1:02d}:00"
+    def _render_minute(self, now, tolerance):
+        period = f"{self.hour:02d}:{self.minute:02d}–"
+        end_hour, end_minute = divmod(self.hour * 60 + self.minute + 5, 60)
+        period += f"{end_hour:02d}:{end_minute:02d}"
+        buckets = minute_buckets(self.day, self.hour, self.minute)
+        if not buckets or max(buckets) < minute_bucket(now - DETAIL_RETENTION):
+            self.hour_detail.set(f"{period}　该时段在最近 14 天明细范围之外")
+            self._render_rows([])
+            return
+        if min(buckets) > now:
+            self.hour_detail.set(f"{period}　该时段尚未开始")
+            self._render_rows([])
+            return
+        row, apps = self.store.minute_detail(
+            self.day, self.hour, self.minute, as_of=now, gap_tolerance=tolerance,
+        )
+        self._render_rank(apps, row, period)
+
+    def _render_rank(self, apps, hour, period):
         if apps:
             description = f"{len(apps)} 项　代理合计 {format_bytes(hour.uploaded + hour.downloaded)}"
         elif hour and hour.covered_seconds:
@@ -441,6 +485,8 @@ class Dashboard:
             description = "已建立采样基线"
         else:
             description = "该时段未采集"
+            if self.minute is not None and not hour.gap_seconds:
+                description = "该时段无明细（明细自升级后采集）"
         if hour and (hour.samples or hour.covered_seconds):
             description += f"　覆盖 {hour.covered_seconds / 60:.2f} 分钟"
             if hour.legacy_coverage:
@@ -454,7 +500,7 @@ class Dashboard:
 
     def _render_rows(self, apps):
         values = tuple((app.app, app.uploaded, app.downloaded) for app in apps)
-        key = (self.trend_index, self.day, self.hour, values)
+        key = (self.trend_index, self.day, self.hour, self.minute, values)
         if key == self._table_rows:
             return
         self._table_rows = key

@@ -93,6 +93,20 @@ def verify_dashboard(store, yesterday):
             assert dashboard.days[0].day == first and dashboard.days[-1].day == today
             expected = 4 if first <= yesterday else 0
             assert len(dashboard.table.get_children()) == expected
+        dashboard.select_date(yesterday)
+        dashboard.select_hour(9)
+        dashboard.minute_picker.current(2)
+        dashboard.minute_picker.event_generate("<<ComboboxSelected>>")
+        root.update()
+        assert "09:05–09:10" in dashboard.hour_detail.get()
+        assert [dashboard.table.item(i, "values")[1] for i in dashboard.table.get_children()] == ["Cursor.exe", "未知应用"]
+        dashboard.minute_picker.current(3)
+        dashboard.minute_picker.event_generate("<<ComboboxSelected>>")
+        root.update()
+        assert "无明细" in dashboard.hour_detail.get() and not dashboard.table.get_children()
+        dashboard.select_hour(13)
+        assert dashboard.minute is None
+        print("PASS minute detail: hour drilldown, matching apps, empty bucket and hour reset")
         print("PASS calendar week/month rankings: local Monday and first-of-month boundaries")
         print("PASS 7/30 day trends: cumulative ranking, date click drills down to hourly ranking")
         print("PASS SQLite dashboard: date changes, invalid date, click and keyboard hour selection, ranking, unknown app, gaps")

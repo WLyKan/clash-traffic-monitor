@@ -56,6 +56,7 @@ class Collector:
         self._last_sample = store.last_sample()
         self._status = Status(False, "正在连接 Mihomo", self._last_sample, self.interval * 3.5)
         self._previous = None
+        self._segment = None
         self._thread = threading.Thread(target=self._run, name="traffic-collector", daemon=True)
 
     def start(self) -> None:
@@ -89,10 +90,11 @@ class Collector:
                 apps, unknown_route, unmatched = traffic_delta(previous, current)
                 self.store.record(
                     current.sampled_at, apps, unknown_route,
-                    unmatched=unmatched, covered_from=previous.sampled_at,
+                    unmatched=unmatched, covered_from=previous.sampled_at, segment=self._segment,
                 )
             else:
                 self.store.record(current.sampled_at, {}, (0, 0), self._last_sample)
+                self._segment = current.sampled_at
         except SourceError as error:
             self._previous = None
             self._set_status(False, str(error))

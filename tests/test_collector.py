@@ -1,5 +1,5 @@
 from contextlib import closing
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import sqlite3
@@ -154,6 +154,72 @@ class CollectorTests(unittest.TestCase):
         row = Store(self.store.path).day_hours(hour.date())[5]
         self.assertTrue(row.legacy_coverage)
         self.assertEqual((row.covered_seconds, row.uploaded, row.downloaded), (1, 12, 34))
+
+    def test_adjacent_five_minute_buckets_reconcile_both_signed_directions(self):
+        for day, hour, minute in ((11, 2, 5), (11, 3, 0), (12, 0, 0)):
+            with self.subTest(hour=hour, minute=minute):
+                store = Store(self.store.path.with_name(f"boundary-{day}-{hour}-{minute}.sqlite3"))
+                edge = datetime(2026, 11, day, hour, minute)
+                t = edge.timestamp()
+                previous = edge - timedelta(minutes=5)
+                collector = Collector(ScriptedSource(
+                    Snapshot(t - 2, 100, 100, (connection("proxy", "proxy", "app.exe", 100, 100),)),
+                    Snapshot(t - 1, 110, 100, (
+                        connection("proxy", "proxy", "app.exe", 100, 110),
+                        connection("direct", "direct", "direct.exe", 0, 20, t - 1.5),
+                    )),
+                    Snapshot(t, 110, 100, (
+                        connection("proxy", "proxy", "app.exe", 100, 110),
+                        connection("direct", "direct", "direct.exe", 0, 20, t - 1.5),
+                    )),
+                    Snapshot(t + 1, 115, 135, (
+                        connection("proxy", "proxy", "app.exe", 110, 110),
+                        connection("direct", "direct", "direct.exe", 0, 20, t - 1.5),
+                        connection("unknown", "unknown", "unknown.exe", 2, 0, t + 0.5),
+                    )),
+                ), store)
+                for _ in range(4):
+                    collector.poll()
+                prior, prior_apps = store.minute_detail(previous.date(), previous.hour, previous.minute)
+                current, current_apps = store.minute_detail(edge.date(), hour, minute)
+                self.assertEqual((prior.unattributed_up, prior.unattributed_down), (3, 0))
+                self.assertEqual((current.unattributed_up, current.unattributed_down), (2, 5))
+                self.assertEqual((prior.covered_seconds, current.covered_seconds), (2, 1))
+                self.assertEqual(prior_apps, [AppTraffic("app.exe", 0, 10)])
+                self.assertEqual(current_apps, [AppTraffic("app.exe", 10, 0)])
+                if previous.hour != hour:
+                    self.assertEqual(store.day_hours(previous.date())[previous.hour].unattributed_up, 3)
+                    self.assertEqual(store.day_hours(edge.date())[hour].unattributed_down, 5)
+
+    def test_minute_residuals_do_not_offset_across_reconnection(self):
+        edge = datetime(2026, 11, 11, 2, 5)
+        t = edge.timestamp()
+        self.store.record(t - 1, {}, (0, 0), unmatched=(10, 0), covered_from=t - 2, segment=t - 2)
+        self.store.record(t, {}, (0, 0), gap_from=t - 1)
+        self.store.record(t + 1, {"proxy.exe": (10, 0)}, (0, 0), unmatched=(-10, 0), covered_from=t, segment=t)
+        before, _ = self.store.minute_detail(edge.date(), 2, 0)
+        after, _ = self.store.minute_detail(edge.date(), 2, 5)
+        self.assertEqual((before.unattributed_up, before.gap_seconds, after.unattributed_up), (10, 1, 0))
+
+    def test_detail_migration_does_not_backfill_and_retention_preserves_hours(self):
+        start = datetime(2026, 11, 1, 5)
+        t = start.timestamp()
+        self.store.record(t, {"legacy.exe": (10, 20)}, (0, 0))
+        with closing(sqlite3.connect(self.store.path)) as db, db:
+            for table in ("minute_apps", "minute_residuals", "minutes"):
+                db.execute(f"DROP TABLE {table}")
+        self.store = Store(self.store.path)
+        self.store.record(t + 360, {}, (0, 0), gap_from=t)
+        legacy, legacy_apps = self.store.minute_detail(start.date(), 5, 0)
+        self.assertEqual((legacy.samples, legacy.gap_seconds, legacy_apps), (0, 0, []))
+        self.store.record(t + 361, {"new.exe": (2, 3)}, (0, 0), covered_from=t + 360)
+        row, apps = self.store.minute_detail(start.date(), 5, 5)
+        self.assertEqual((row.covered_seconds, apps), (1, [AppTraffic("new.exe", 2, 3)]))
+        self.store.record(t + 14 * 86400 + 600, {}, (0, 0))
+        self.assertEqual(self.store.minute_detail(start.date(), 5, 5)[1], [])
+        self.assertEqual(self.store.hour_apps(start.date(), 5), [
+            AppTraffic("legacy.exe", 10, 20), AppTraffic("new.exe", 2, 3),
+        ])
 
     def test_core_generation_change_does_not_count_old_or_new_baselines(self):
         day = datetime(2026, 11, 10, 8)
