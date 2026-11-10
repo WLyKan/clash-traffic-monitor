@@ -40,7 +40,7 @@ def show_message(message: str, *, error: bool = False) -> None:
 def main() -> int:
     default_dir = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
     parser = argparse.ArgumentParser(description="Clash 流量监控")
-    parser.add_argument("--data-dir", type=Path, default=default_dir / "ClashTrafficMonitor")
+    parser.add_argument("--data-dir", type=Path)
     parser.add_argument("--start-hidden", action="store_true", help="启动后只显示通知区域图标")
     parser.add_argument("--check", action="store_true", help="只读检查 Mihomo 连接和应用归因")
     args = parser.parse_args()
@@ -56,12 +56,16 @@ def main() -> int:
 
         from clash_monitor.tray import run_dashboard
 
-        with single_writer(args.data_dir):
-            store = Store(args.data_dir / "traffic.sqlite3")
+        from clash_monitor.startup import LoginStartup
+
+        data_dir = args.data_dir or default_dir / "ClashTrafficMonitor"
+        startup = LoginStartup() if args.data_dir is None else None
+        with single_writer(data_dir):
+            store = Store(data_dir / "traffic.sqlite3")
             collector = Collector(source, store)
             collector.start()
             try:
-                run_dashboard(store, collector, start_hidden=args.start_hidden)
+                run_dashboard(store, collector, start_hidden=args.start_hidden, startup=startup)
             finally:
                 collector.stop()
         return 0

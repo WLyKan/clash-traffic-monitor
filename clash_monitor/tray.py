@@ -19,13 +19,13 @@ def _tray_image():
     return icon
 
 
-def run_dashboard(store, collector, *, start_hidden=False):
+def run_dashboard(store, collector, *, start_hidden=False, startup=None):
     """Keep Tk on the calling thread and route tray actions through a queue."""
     import pystray
     from PIL import ImageTk
 
     root = tk.Tk()
-    dashboard = Dashboard(root, store, collector)
+    dashboard = Dashboard(root, store, collector, startup=startup)
     image = _tray_image()
     photo = ImageTk.PhotoImage(image)
     root.iconphoto(True, photo)

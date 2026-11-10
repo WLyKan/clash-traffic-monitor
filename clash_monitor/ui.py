@@ -3,7 +3,7 @@
 from datetime import date, datetime, timedelta
 from sqlite3 import Error as DatabaseError
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
 
 BACKGROUND = "#eff4f9"
@@ -35,10 +35,11 @@ def format_gap(seconds):
 
 
 class Dashboard:
-    def __init__(self, root, store, collector):
+    def __init__(self, root, store, collector, *, startup=None):
         self.root = root
         self.store = store
         self.collector = collector
+        self.startup = startup
         self.day = date.today()
         self.hour = datetime.now().hour
         self.hours = []
@@ -83,6 +84,7 @@ class Dashboard:
         self.date_entry.pack(side="left")
         self.date_entry.bind("<Return>", self.apply_date)
         ttk.Button(toolbar, text="查看", width=6, command=self.apply_date).pack(side="left", padx=4)
+        ttk.Button(toolbar, text="设置", command=self._show_settings).pack(side="right")
         self.date_error = tk.StringVar()
         ttk.Label(toolbar, textvariable=self.date_error, style="Error.TLabel").pack(side="left", padx=5)
 
@@ -160,6 +162,35 @@ class Dashboard:
             row=5, column=0, sticky="w", pady=(8, 0)
         )
         self.refresh()
+
+    def _show_settings(self):
+        window = tk.Toplevel(self.root)
+        window.title("设置")
+        window.transient(self.root)
+        settings = ttk.Frame(window, padding=16)
+        settings.pack(fill="both", expand=True)
+        if self.startup is None:
+            ttk.Label(settings, text="独立数据目录模式下，登录自启不可用。").pack(anchor="w")
+        else:
+            try:
+                enabled = tk.BooleanVar(window, self.startup.enabled())
+            except OSError:
+                ttk.Label(settings, text="无法读取当前用户的登录启动设置。").pack(anchor="w")
+            else:
+                def change_startup():
+                    requested = enabled.get()
+                    try:
+                        self.startup.set_enabled(requested)
+                    except OSError:
+                        enabled.set(not requested)
+                        messagebox.showerror("设置", "无法写入当前用户的登录启动设置。", parent=window)
+
+                ttk.Checkbutton(
+                    settings, text="登录 Windows 后启动并收起到托盘",
+                    variable=enabled, command=change_startup,
+                ).pack(anchor="w")
+        ttk.Button(settings, text="关闭", command=window.destroy).pack(anchor="e", pady=(12, 0))
+        window.grab_set()
 
     def _styles(self):
         style = ttk.Style(self.root)
