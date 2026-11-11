@@ -1,3 +1,4 @@
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 
@@ -48,7 +49,7 @@ class LoginStartupTests(unittest.TestCase):
     def test_opt_in_and_repeated_toggle_touch_only_owned_value(self):
         registry = Registry()
         with patch.object(startup, "winreg", registry):
-            setting = startup.LoginStartup()
+            setting = startup.LoginStartup(Path(r"C:\Users\Example\Documents\ClashTrafficMonitor"))
             self.assertFalse(setting.enabled())
             self.assertEqual(registry.writes, [])
             setting.set_enabled(False)
@@ -56,6 +57,7 @@ class LoginStartupTests(unittest.TestCase):
                 setting.set_enabled(True)
                 self.assertTrue(setting.enabled())
                 self.assertIn("--start-hidden", registry.values[startup.VALUE_NAME])
+                self.assertIn("--data-dir", registry.values[startup.VALUE_NAME])
             for _ in range(2):
                 setting.set_enabled(False)
                 self.assertFalse(setting.enabled())
@@ -67,6 +69,16 @@ class LoginStartupTests(unittest.TestCase):
             startup.sys, "executable", r"C:\Program Files\ClashTrafficMonitor.exe"
         ):
             self.assertEqual(
-                startup.startup_command(),
-                r'"C:\Program Files\ClashTrafficMonitor.exe" --start-hidden',
+                startup.startup_command(Path(r"C:\History Shared\Clash Monitor")),
+                r'"C:\Program Files\ClashTrafficMonitor.exe" --start-hidden --data-dir "C:\History Shared\Clash Monitor"',
             )
+
+    def test_source_login_carries_absolute_data_directory(self):
+        data_dir = Path(r"C:\History Shared\Clash Monitor")
+        with patch.object(startup.sys, "frozen", False, create=True), patch.object(
+            startup.sys, "executable", r"C:\Python313\python.exe"
+        ):
+            command = startup.startup_command(data_dir)
+        self.assertTrue(command.startswith(r"C:\Python313\pythonw.exe -c "))
+        self.assertIn("sys.path.insert", command)
+        self.assertTrue(command.endswith(r'--start-hidden --data-dir "C:\History Shared\Clash Monitor"'))
