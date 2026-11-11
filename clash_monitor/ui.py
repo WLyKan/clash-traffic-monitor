@@ -48,6 +48,27 @@ def format_gap(seconds):
     return f"{minutes} 分 {seconds:02d} 秒" if minutes else f"{seconds} 秒"
 
 
+def hover_text(row, label, *, future=False):
+    if future:
+        state = "该时段尚未开始"
+    elif row.covered_seconds:
+        state = "已采集" if row.uploaded or row.downloaded else "已采集，代理流量 0 B"
+    elif row.legacy_coverage:
+        state = "旧记录，精确覆盖未知"
+    elif row.samples:
+        state = "已建立采样基线"
+    else:
+        state = "该时段未采集"
+    if row.covered_seconds:
+        state += f"　覆盖 {row.covered_seconds / 60:.2f} 分钟"
+    if row.legacy_coverage and "覆盖未知" not in state:
+        state += "（旧记录精确覆盖未知）"
+    if row.gap_seconds:
+        state += f"　缺口 {format_gap(row.gap_seconds)}"
+    return (f"{label}\n代理合计 {format_bytes(row.uploaded + row.downloaded)}"
+            f"　下载 {format_bytes(row.downloaded)}　上传 {format_bytes(row.uploaded)}\n{state}")
+
+
 class Dashboard:
     def __init__(self, root, store, collector, *, startup=None):
         self.root = root
@@ -63,6 +84,7 @@ class Dashboard:
         self.minute = None
         self._table_rows = None
         self._chart_items = None
+        self._hover = None
 
         root.title("Clash 流量监控")
         width = min(900, root.winfo_screenwidth() - 90)
@@ -137,6 +159,8 @@ class Dashboard:
         self.chart.grid(row=1, column=0, sticky="ew", pady=(3, 3))
         self.chart.bind("<Configure>", self._draw_chart)
         self.chart.bind("<Button-1>", self._chart_click)
+        self.chart.bind("<Motion>", self._chart_motion)
+        self.chart.bind("<Leave>", self._clear_hover)
         self.chart.bind("<Left>", lambda event: self._chart_key(self._chart_selection() - 1))
         self.chart.bind("<Right>", lambda event: self._chart_key(self._chart_selection() + 1))
         self.chart.bind("<Home>", lambda event: self._chart_key(0))
@@ -282,6 +306,7 @@ class Dashboard:
             self.select_date(next_day)
 
     def select_date(self, day):
+        self._clear_hover()
         self.trend_index = 0
         self.trend_picker.current(0)
         self._reset_minute()
@@ -292,6 +317,7 @@ class Dashboard:
         self.refresh(pick_historical_hour=day < date.today())
 
     def _trend_change(self, event=None):
+        self._clear_hover()
         self.trend_index = self.trend_picker.current()
         self.focus_day = 0
         self.refresh()
@@ -424,6 +450,7 @@ class Dashboard:
         selected = self._chart_selection()
         key = (snapshot, tuple(row.day for row in self.days), self.trend_index, selected, left, right, bottom)
         if key == self._chart_items:
+            self._draw_hover()
             return
         self._chart_items = key
         chart.delete("all")
@@ -469,6 +496,44 @@ class Dashboard:
                 label = f"{index:02d}"
             if show_label:
                 chart.create_text(center, bottom + 12, text=label, fill=INK if index == selected else MUTED, font=axis_font)
+
+        self._draw_hover()
+
+    def _clear_hover(self, event=None):
+        self._hover = None
+        self.chart.delete("hover")
+
+    def _chart_motion(self, event):
+        left, right, step = self._plot_geometry()
+        if step <= 0 or not (left <= event.x < right and 12 <= event.y <= self.chart.winfo_height() - 26):
+            self._clear_hover()
+            return
+        self._hover = int((event.x - left) / step)
+        self._draw_hover()
+
+    def _draw_hover(self):
+        chart = self.chart
+        chart.delete("hover")
+        index = self._hover
+        rows = self.days if self.trend_index else self.hours
+        if index is None or index >= len(rows):
+            return
+        row = rows[index]
+        now = datetime.now()
+        label = row.day.isoformat() if self.trend_index else f"{self.day.isoformat()} {index:02d}:00–{index + 1:02d}:00"
+        future = not self.trend_index and self.day == now.date() and index > now.hour
+        text = hover_text(row, label, future=future)
+        left, right, step = self._plot_geometry()
+        x = left + (index + .5) * step
+        item = chart.create_text(x, 14, anchor="nw", text=text, fill=INK,
+                                 font=("Microsoft YaHei UI", 9), width=max(100, chart.winfo_width() - 24), tags="hover")
+        box = chart.bbox(item)
+        dx = min(0, chart.winfo_width() - 10 - box[2])
+        chart.move(item, dx, 0)
+        box = chart.bbox(item)
+        panel = chart.create_rectangle(box[0]-5, box[1]-4, box[2]+5, box[3]+4,
+                                       fill="#fffbe8", outline=LINE, tags="hover")
+        chart.tag_lower(panel, item)
 
     def _chart_click(self, event):
         left, right, step = self._plot_geometry()

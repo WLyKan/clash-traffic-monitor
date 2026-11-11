@@ -83,6 +83,46 @@ def verify_settings(dashboard, startup):
     assert not window.winfo_exists()
 
 
+def verify_hover(dashboard, store, yesterday):
+    root = dashboard.root
+    dashboard.select_date(yesterday)
+    root.update()
+    def move(index, y=60):
+        left, _, step = dashboard._plot_geometry()
+        dashboard.chart.event_generate("<Motion>", x=round(left + step * (index + .5)), y=y)
+        root.update()
+        return " ".join(dashboard.chart.itemcget(i, "text") for i in dashboard.chart.find_withtag("hover")
+                        if dashboard.chart.type(i) == "text")
+    assert "未采集" in move(0)
+    assert "代理流量 0 B" in move(10)
+    assert "09:00–10:00" in move(9) and "下载" in move(9)
+    stamp = datetime.combine(yesterday, time(9, 6)).timestamp()
+    before = move(9)
+    store.record(stamp, {"Cursor.exe": (17, 12345)}, (0, 0), covered_from=stamp-1)
+    dashboard.refresh()
+    after = " ".join(dashboard.chart.itemcget(i, "text") for i in dashboard.chart.find_withtag("hover")
+                     if dashboard.chart.type(i) == "text")
+    assert before != after and dashboard._hover == 9
+    move(9, 0)
+    assert not dashboard.chart.find_withtag("hover")
+    move(23)
+    box = dashboard.chart.bbox("hover")
+    assert box[0] >= 0 and box[2] <= dashboard.chart.winfo_width()
+    dashboard.chart.event_generate("<Leave>")
+    assert not dashboard.chart.find_withtag("hover")
+    for index in (1, 2, 3, 4):
+        dashboard.trend_picker.current(index)
+        dashboard._trend_change()
+        assert dashboard._hover is None
+        text = move(len(dashboard.days)-1)
+        assert date.today().isoformat() in text
+    dashboard.select_date(date.today())
+    if datetime.now().hour < 23:
+        assert "尚未开始" in move(23)
+    dashboard.select_date(yesterday)
+    print("PASS hover: full columns, empty/zero/value/future, stationary refresh, edges, leave and all trend switches")
+
+
 def verify_dashboard(store, yesterday):
     root = tk.Tk()
     try:
@@ -153,6 +193,7 @@ def verify_dashboard(store, yesterday):
         assert "无明细" in dashboard.hour_detail.get() and not dashboard.table.get_children()
         dashboard.select_hour(13)
         assert dashboard.minute is None
+        verify_hover(dashboard, store, yesterday)
         verify_settings(dashboard, startup)
         print("PASS Tk settings: opt-in startup using a substitute, alert threshold and enable switch")
         print("PASS minute detail: hour drilldown, matching apps, empty bucket and hour reset")
