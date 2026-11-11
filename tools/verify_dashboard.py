@@ -123,6 +123,37 @@ def verify_hover(dashboard, store, yesterday):
     print("PASS hover: full columns, empty/zero/value/future, stationary refresh, edges, leave and all trend switches")
 
 
+def verify_targets(dashboard, store, day):
+    stamp = datetime.combine(day, time(9, 7)).timestamp()
+    store.record(stamp, {"Cursor.exe": (12, 34)}, (0,0), targets={("Cursor.exe", "example.com"): (12,34)})
+    dashboard.select_date(day)
+    dashboard.select_hour(9)
+    dashboard.root.update()
+    item = next(i for i in dashboard.table.get_children() if dashboard.table.item(i,"values")[1] == "Cursor.exe")
+    dashboard.table.selection_set(item)
+    dashboard.table.event_generate("<<TreeviewSelect>>")
+    dashboard.root.update()
+    def names():
+        return [dashboard.target_table.item(i,"values")[0] for i in dashboard.target_table.get_children()]
+    assert "example.com" in names() and "历史未记录域名" in names()
+    dashboard.minute_picker.current(2)
+    dashboard._minute_change()
+    dashboard.root.update()
+    assert "example.com" in names()
+    dashboard.target_scope.current(1)
+    dashboard.target_scope.event_generate("<<ComboboxSelected>>")
+    dashboard.root.update()
+    assert "example.com" in names()
+    dashboard.target_scope.current(0)
+    dashboard.select_hour(10)
+    dashboard.root.update()
+    assert not names()
+    dashboard.select_hour(9)
+    dashboard.root.update()
+    assert "example.com" in names()
+    print("PASS target UI: application selection, date/hour/five-minute linkage, whole-day scope and legacy label")
+
+
 def verify_dashboard(store, yesterday):
     root = tk.Tk()
     try:
@@ -194,6 +225,7 @@ def verify_dashboard(store, yesterday):
         dashboard.select_hour(13)
         assert dashboard.minute is None
         verify_hover(dashboard, store, yesterday)
+        verify_targets(dashboard, store, yesterday)
         verify_settings(dashboard, startup)
         print("PASS Tk settings: opt-in startup using a substitute, alert threshold and enable switch")
         print("PASS minute detail: hour drilldown, matching apps, empty bucket and hour reset")

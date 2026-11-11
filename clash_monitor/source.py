@@ -51,6 +51,7 @@ class Connection:
     route: str
     uploaded: int
     downloaded: int
+    target: str = "目标未知"
 
 
 @dataclass(frozen=True)
@@ -61,6 +62,32 @@ class Snapshot:
     connections: tuple[Connection, ...]
     generation: int = 0
     completed_at: float | None = None
+
+
+def target_name(metadata):
+    for field in ("host", "sniffHost"):
+        value = metadata.get(field)
+        if not isinstance(value, str):
+            continue
+        value = value.strip().rstrip(".").lower()
+        try:
+            ipaddress.ip_address(value.strip("[]"))
+            continue
+        except ValueError:
+            pass
+        try:
+            value = value.encode("idna").decode("ascii")
+        except UnicodeError:
+            continue
+        labels = value.split(".")
+        if len(value) <= 253 and all(0 < len(label) <= 63 and not label.startswith("-")
+                and not label.endswith("-") and all(c.isascii() and (c.isalnum() or c == "-") for c in label)
+                for label in labels):
+            return value
+    try:
+        return str(ipaddress.ip_address(str(metadata.get("destinationIP", "")).strip("[]")))
+    except ValueError:
+        return "目标未知"
 
 
 def _read_json(response: http.client.HTTPResponse) -> dict:
@@ -465,12 +492,12 @@ class MihomoSource:
             socket = _connection_socket(metadata) if app is None else None
             if socket is not None:
                 needed.add(socket)
-            pending.append((identity, started_at, app, socket, route, uploaded, downloaded))
+            pending.append((identity, started_at, app, socket, route, uploaded, downloaded, target_name(metadata)))
 
         owners = _tcp_owners(needed)
         processes = {}
         result = []
-        for identity, started_at, app, socket, route, uploaded, downloaded in pending:
+        for identity, started_at, app, socket, route, uploaded, downloaded, target in pending:
             pid = owners.get(socket)
             if app is None and pid is not None:
                 if pid not in processes:
@@ -478,6 +505,6 @@ class MihomoSource:
                 details = processes[pid]
                 if details is not None and (started_at is None or details[1] <= started_at):
                     app = details[0]
-            result.append(Connection(identity, started_at, app, route, uploaded, downloaded))
+            result.append(Connection(identity, started_at, app, route, uploaded, downloaded, target))
         self._apps = {record.id: record.app for record in result if record.app is not None}
         return tuple(result)

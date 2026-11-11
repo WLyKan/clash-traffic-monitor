@@ -21,7 +21,7 @@ Windows 本地托盘工具，记录经过 Clash 的代理流量。可以按日�
 
 ## 数据与统计口径
 
-数据库位于 `%USERPROFILE%\Documents\ClashTrafficMonitor\traffic.sqlite3`。目录位于 AppData 外，同一 Windows 用户从 Codex、开始菜单和登录自启启动时使用相同的物理位置。按 Windows 本地日期和小时汇总，只保留流量字节、应用名及采集状态。默认采样间隔为一秒，跨小时的增量按采样时间归入对应小时。
+数据库位于 `%USERPROFILE%\Documents\ClashTrafficMonitor\traffic.sqlite3`。目录位于 AppData 外，同一 Windows 用户从 Codex、开始菜单和登录自启启动时使用相同的物理位置。按 Windows 本地日期和小时汇总，保存流量字节、应用名、访问目标域名或 IP 及采集状态。默认采样间隔为一秒，跨小时的增量按采样时间归入对应小时。
 
 | 指标 | 含义 |
 | --- | --- |
@@ -82,3 +82,9 @@ python -m venv .venv
 ```
 
 在 Windows x64 上生成 `dist\ClashTrafficMonitor.exe`。可用 `--data-dir` 指定测试目录，对打包版做独立的连接和托盘验收。
+
+## 应用访问目标
+
+选中应用后，下方显示访问目标下载、上传和合计，按合计降序；支持所选日期整日、小时及 5 分钟时段。优先使用 host 有效域名，其次 sniffHost，再使用目标 IP，否则显示“目标未知”；IPv6 加方括号显示。域名统一小写并去除末尾点。
+
+域名从本版启用后积累，原有字节标为“历史未记录域名”。升级只新增目标汇总表，保留原小时、应用、5 分钟、设置、恢复账本和检查点。5 分钟目标明细同样保留 14 天；采样基线、代理确认及缺口口径不变。

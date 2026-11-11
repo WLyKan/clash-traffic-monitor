@@ -85,10 +85,11 @@ class Dashboard:
         self._table_rows = None
         self._chart_items = None
         self._hover = None
+        self._selected_app = None
 
         root.title("Clash 流量监控")
         width = min(900, root.winfo_screenwidth() - 90)
-        height = min(690, root.winfo_screenheight() - 85)
+        height = min(820, root.winfo_screenheight() - 85)
         root.geometry(f"{width}x{height}")
         root.minsize(min(690, width), min(585, height))
         root.configure(background=BACKGROUND)
@@ -207,6 +208,28 @@ class Dashboard:
         scrollbar = ttk.Scrollbar(ranking, orient="vertical", command=self.table.yview)
         self.table.configure(yscrollcommand=scrollbar.set)
         scrollbar.grid(row=2, column=1, sticky="ns")
+
+        self.table.bind("<<TreeviewSelect>>", self._select_app)
+        targets_header = ttk.Frame(ranking, style="Paper.TFrame")
+        targets_header.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(8, 3))
+        self.target_title = tk.StringVar(value="访问目标排行 · 请选择应用")
+        ttk.Label(targets_header, textvariable=self.target_title, style="Caption.TLabel").pack(side="left")
+        self.target_scope = ttk.Combobox(targets_header, state="readonly", width=12,
+                                        values=("所选时段", "所选日期整日"))
+        self.target_scope.current(0)
+        self.target_scope.pack(side="right")
+        self.target_scope.bind("<<ComboboxSelected>>", lambda event: self._render_targets())
+        self.target_table = ttk.Treeview(ranking, columns=("target", "down", "up", "total"),
+                                         show="headings", height=4)
+        for key, title, width in (("target", "目标", 260), ("down", "下载", 103),
+                                   ("up", "上传", 103), ("total", "合计", 108)):
+            self.target_table.heading(key, text=title)
+            self.target_table.column(key, width=width, stretch=key == "target", anchor="w" if key == "target" else "e")
+        self.target_table.grid(row=4, column=0, sticky="nsew")
+        target_scroll = ttk.Scrollbar(ranking, orient="vertical", command=self.target_table.yview)
+        self.target_table.configure(yscrollcommand=target_scroll.set)
+        target_scroll.grid(row=4, column=1, sticky="ns")
+        ranking.grid_rowconfigure(4, weight=1)
 
         self.footer_text = tk.StringVar(value="未归因流量可能含直连，单独显示。关闭窗口后继续在托盘采集。")
         ttk.Label(body, textvariable=self.footer_text, style="Muted.TLabel").grid(
@@ -596,7 +619,33 @@ class Dashboard:
         self.hour_detail.set(f"{period}　{description}")
         self._render_rows(apps)
 
+    def _select_app(self, event=None):
+        selected = self.table.selection()
+        if selected:
+            self._selected_app = self.table.item(selected[0], "values")[1]
+        self._render_targets()
+
+    def _render_targets(self):
+        self.target_table.delete(*self.target_table.get_children())
+        app = self._selected_app
+        if self.trend_index or app is None:
+            self.target_title.set("访问目标排行 · 请选择单日中的应用")
+            return
+        whole_day = self.target_scope.current() == 1
+        hour, minute = (None, None) if whole_day else (self.hour, self.minute)
+        self.target_title.set(f"{app} · 访问目标（" + ("整日" if whole_day else "所选时段") + "）")
+        try:
+            rows = self.store.app_targets(self.day, None if app == "未知应用" else app, hour, minute)
+        except DatabaseError:
+            self.target_title.set("暂时无法读取访问目标")
+            return
+        for row in rows:
+            name = f"[{row.app}]" if ":" in row.app else row.app
+            self.target_table.insert("", "end", values=(name, format_bytes(row.downloaded),
+                                      format_bytes(row.uploaded), format_bytes(row.uploaded+row.downloaded)))
+
     def _render_rows(self, apps):
+        self._render_targets()
         values = tuple((app.app, app.uploaded, app.downloaded) for app in apps)
         key = (self.trend_index, self.day, self.hour, self.minute, values)
         if key == self._table_rows:
@@ -611,3 +660,7 @@ class Dashboard:
                 tags=("alternate",) if rank % 2 == 0 else (),
             )
         self.table.yview_moveto(offset)
+        for item in self.table.get_children():
+            if self.table.item(item, "values")[1] == self._selected_app:
+                self.table.selection_set(item)
+                break

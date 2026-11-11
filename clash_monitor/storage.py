@@ -100,6 +100,18 @@ class Store:
                     down INTEGER NOT NULL,
                     PRIMARY KEY (bucket, segment)
                 );
+                CREATE TABLE IF NOT EXISTS targets (
+                    day TEXT NOT NULL, hour INTEGER NOT NULL,
+                    app TEXT NOT NULL COLLATE NOCASE, target TEXT NOT NULL,
+                    uploaded INTEGER NOT NULL, downloaded INTEGER NOT NULL,
+                    PRIMARY KEY (day, hour, app, target)
+                );
+                CREATE TABLE IF NOT EXISTS minute_targets (
+                    bucket INTEGER NOT NULL REFERENCES minutes(bucket) ON DELETE CASCADE,
+                    app TEXT NOT NULL COLLATE NOCASE, target TEXT NOT NULL,
+                    uploaded INTEGER NOT NULL, downloaded INTEGER NOT NULL,
+                    PRIMARY KEY (bucket, app, target)
+                );
                 CREATE TABLE IF NOT EXISTS spike_settings (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
                     enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
@@ -148,6 +160,7 @@ class Store:
         unmatched: tuple[int, int] = (0, 0),
         covered_from: float | None = None,
         segment: float | None = None,
+        targets: dict | None = None,
     ) -> None:
         local = datetime.fromtimestamp(sampled_at)
         day, hour = local.date().isoformat(), local.hour
@@ -181,6 +194,17 @@ class Store:
                         covered_seconds = covered_seconds + excluded.covered_seconds
                 """, _interval_hours(covered_from, sampled_at))
             self._record_minutes(db, sampled_at, apps, unattributed, unmatched, covered_from, gap_from, segment)
+            for (app, target), (up, down) in (targets or {}).items():
+                db.execute("""
+                    INSERT INTO targets VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(day, hour, app, target) DO UPDATE SET
+                        uploaded = uploaded + excluded.uploaded, downloaded = downloaded + excluded.downloaded
+                """, (day, hour, app or "", target, up, down))
+                db.execute("""
+                    INSERT INTO minute_targets VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(bucket, app, target) DO UPDATE SET
+                        uploaded = uploaded + excluded.uploaded, downloaded = downloaded + excluded.downloaded
+                """, (minute_bucket(sampled_at), app or "", target, up, down))
             db.execute("""
                 INSERT INTO checkpoint (id, sampled_at) VALUES (1, ?)
                 ON CONFLICT(id) DO UPDATE SET sampled_at = excluded.sampled_at
@@ -350,6 +374,29 @@ class Store:
                 ORDER BY uploaded + downloaded DESC, app COLLATE NOCASE
             """, (day.isoformat(), hour)).fetchall()
         return [AppTraffic(app or None, uploaded, downloaded) for app, uploaded, downloaded in rows]
+
+    def app_targets(self, day, app, hour=None, minute=None):
+        """Read target totals and mark pre-feature bytes without rewriting history."""
+        with closing(self._connect()) as db:
+            db.execute("BEGIN")
+            if minute is not None:
+                buckets = minute_buckets(day, hour, minute)
+                where = "bucket IN (" + ",".join("?" for _ in buckets) + ") AND app = ?"
+                args = (*buckets, app or "")
+                table, app_table = "minute_targets", "minute_apps"
+            else:
+                where = "day = ? AND app = ?"
+                args = (day.isoformat(), app or "")
+                if hour is not None:
+                    where += " AND hour = ?"
+                    args += (hour,)
+                table, app_table = "targets", "apps"
+            rows = db.execute(f"SELECT target, SUM(uploaded), SUM(downloaded) FROM {table} WHERE {where} GROUP BY target", args).fetchall()
+            total = db.execute(f"SELECT COALESCE(SUM(uploaded),0), COALESCE(SUM(downloaded),0) FROM {app_table} WHERE {where}", args).fetchone()
+        missing = (max(0, total[0] - sum(r[1] for r in rows)), max(0, total[1] - sum(r[2] for r in rows)))
+        if any(missing):
+            rows.append(("历史未记录域名", *missing))
+        return sorted((AppTraffic(*r) for r in rows), key=lambda r: (-(r.uploaded+r.downloaded), r.app))
 
 
 def _offset_balance(previous, current):

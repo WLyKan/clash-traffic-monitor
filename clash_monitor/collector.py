@@ -17,14 +17,14 @@ class Status:
     gap_tolerance: float = 3.5
 
 
-def traffic_delta(previous: Snapshot, current: Snapshot):
+def traffic_delta(previous: Snapshot, current: Snapshot, *, targets=None):
     before = {connection.id: connection for connection in previous.connections}
     previous_end = previous.completed_at or previous.sampled_at
     apps = {}
     observed_up = observed_down = unknown_up = unknown_down = 0
     for connection in current.connections:
         older = before.get(connection.id)
-        if older is not None:
+        if older is not None and older.started_at == connection.started_at:
             up = max(0, connection.uploaded - older.uploaded)
             down = max(0, connection.downloaded - older.downloaded)
         elif connection.started_at is not None and connection.started_at >= previous_end:
@@ -36,6 +36,10 @@ def traffic_delta(previous: Snapshot, current: Snapshot):
         if connection.route == "proxy" and (up or down):
             app_up, app_down = apps.get(connection.app, (0, 0))
             apps[connection.app] = (app_up + up, app_down + down)
+            if targets is not None:
+                key = (connection.app, connection.target)
+                target_up, target_down = targets.get(key, (0, 0))
+                targets[key] = (target_up + up, target_down + down)
         elif connection.route == "unknown":
             unknown_up += up
             unknown_down += down
@@ -110,10 +114,11 @@ class Collector:
                 and current.download_total >= previous.download_total
             )
             if continuous:
-                apps, unknown_route, unmatched = traffic_delta(previous, current)
+                targets = {}
+                apps, unknown_route, unmatched = traffic_delta(previous, current, targets=targets)
                 self.store.record(
                     current.sampled_at, apps, unknown_route,
-                    unmatched=unmatched, covered_from=previous.sampled_at, segment=self._segment,
+                    unmatched=unmatched, covered_from=previous.sampled_at, segment=self._segment, targets=targets,
                 )
             else:
                 self.store.record(current.sampled_at, {}, (0, 0), self._last_sample)
