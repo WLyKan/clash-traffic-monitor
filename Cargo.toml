@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/monitor-core"]
+members = ["crates/monitor-core", "crates/monitor-store"]
 resolver = "2"
 
 [workspace.package]

@@ -1,0 +1,870 @@
+{
+  "records": [
+    {
+      "local": "2026-11-11T23:54:59",
+      "apps": [
+        [
+          "Code.exe",
+          20,
+          40
+        ]
+      ],
+      "targets": [
+        [
+          "Code.exe",
+          "example.com",
+          20,
+          40
+        ]
+      ],
+      "unmatched": [
+        0,
+        0
+      ]
+    },
+    {
+      "local": "2026-11-11T23:59:59",
+      "apps": [
+        [
+          "code.EXE",
+          7,
+          15
+        ],
+        [
+          "",
+          1,
+          2
+        ]
+      ],
+      "targets": [
+        [
+          "code.EXE",
+          "目标未知",
+          7,
+          15
+        ],
+        [
+          "",
+          "[2001:db8::1]:443",
+          1,
+          2
+        ]
+      ],
+      "unmatched": [
+        12,
+        -5
+      ],
+      "covered_seconds": 300,
+      "segment": "2026-11-11T23:54:59"
+    },
+    {
+      "local": "2026-11-12T00:00:01",
+      "apps": [
+        [
+          "Code.exe",
+          8,
+          16
+        ]
+      ],
+      "targets": [
+        [
+          "Code.exe",
+          "example.com",
+          8,
+          16
+        ]
+      ],
+      "unmatched": [
+        -8,
+        3
+      ],
+      "covered_seconds": 2,
+      "segment": "2026-11-11T23:54:59"
+    },
+    {
+      "local": "2026-11-12T00:05:01",
+      "apps": [],
+      "targets": [],
+      "unmatched": [
+        0,
+        0
+      ],
+      "gap_seconds": 300
+    },
+    {
+      "local": "2026-11-12T10:14:59",
+      "apps": [
+        [
+          "Code.exe",
+          3,
+          9
+        ]
+      ],
+      "targets": [],
+      "unmatched": [
+        0,
+        0
+      ],
+      "covered_seconds": 2,
+      "segment": "2026-11-12T10:14:57"
+    }
+  ],
+  "expected": {
+    "day_hours": {
+      "2026-11-11": [
+        {
+          "hour": 0,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 1,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 2,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 3,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 4,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 5,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 6,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 7,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 8,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 9,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 10,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 11,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 12,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 13,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 14,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 15,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 16,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 17,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 18,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 19,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 20,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 21,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 22,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 23,
+          "uploaded": 28,
+          "downloaded": 57,
+          "unattributed_up": 4,
+          "unattributed_down": 0,
+          "samples": 2,
+          "gap_seconds": 0.0,
+          "covered_seconds": 301.0,
+          "legacy_coverage": false
+        }
+      ],
+      "2026-11-12": [
+        {
+          "hour": 0,
+          "uploaded": 8,
+          "downloaded": 16,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 2,
+          "gap_seconds": 300.0,
+          "covered_seconds": 1.0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 1,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 2,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 3,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 4,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 5,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 6,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 7,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 8,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 9,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 10,
+          "uploaded": 3,
+          "downloaded": 9,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 1,
+          "gap_seconds": 0.0,
+          "covered_seconds": 2.0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 11,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 12,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 13,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 14,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 15,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 16,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 17,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 18,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 19,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 20,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 21,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 22,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        },
+        {
+          "hour": 23,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 0,
+          "gap_seconds": 0,
+          "covered_seconds": 0,
+          "legacy_coverage": false
+        }
+      ]
+    },
+    "range_days": [
+      {
+        "day": "2026-11-11",
+        "uploaded": 28,
+        "downloaded": 57,
+        "samples": 2,
+        "gap_seconds": 0.0,
+        "covered_seconds": 301.0,
+        "legacy_coverage": false
+      },
+      {
+        "day": "2026-11-12",
+        "uploaded": 11,
+        "downloaded": 25,
+        "samples": 3,
+        "gap_seconds": 300.0,
+        "covered_seconds": 3.0,
+        "legacy_coverage": false
+      }
+    ],
+    "range_apps": [
+      {
+        "app": "Code.exe",
+        "uploaded": 38,
+        "downloaded": 80
+      },
+      {
+        "app": null,
+        "uploaded": 1,
+        "downloaded": 2
+      }
+    ],
+    "minutes": [
+      {
+        "day": "2026-11-11",
+        "hour": 23,
+        "minute": 50,
+        "traffic": {
+          "hour": 23,
+          "uploaded": 20,
+          "downloaded": 40,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 1,
+          "gap_seconds": 0.0,
+          "covered_seconds": 1.0,
+          "legacy_coverage": false
+        },
+        "apps": [
+          {
+            "app": "Code.exe",
+            "uploaded": 20,
+            "downloaded": 40
+          }
+        ]
+      },
+      {
+        "day": "2026-11-11",
+        "hour": 23,
+        "minute": 55,
+        "traffic": {
+          "hour": 23,
+          "uploaded": 8,
+          "downloaded": 17,
+          "unattributed_up": 4,
+          "unattributed_down": 0,
+          "samples": 1,
+          "gap_seconds": 0.0,
+          "covered_seconds": 300.0,
+          "legacy_coverage": false
+        },
+        "apps": [
+          {
+            "app": "code.EXE",
+            "uploaded": 7,
+            "downloaded": 15
+          },
+          {
+            "app": null,
+            "uploaded": 1,
+            "downloaded": 2
+          }
+        ]
+      },
+      {
+        "day": "2026-11-12",
+        "hour": 0,
+        "minute": 0,
+        "traffic": {
+          "hour": 0,
+          "uploaded": 8,
+          "downloaded": 16,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 1,
+          "gap_seconds": 299.0,
+          "covered_seconds": 1.0,
+          "legacy_coverage": false
+        },
+        "apps": [
+          {
+            "app": "Code.exe",
+            "uploaded": 8,
+            "downloaded": 16
+          }
+        ]
+      },
+      {
+        "day": "2026-11-12",
+        "hour": 0,
+        "minute": 5,
+        "traffic": {
+          "hour": 0,
+          "uploaded": 0,
+          "downloaded": 0,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 1,
+          "gap_seconds": 1.0,
+          "covered_seconds": 0.0,
+          "legacy_coverage": false
+        },
+        "apps": []
+      },
+      {
+        "day": "2026-11-12",
+        "hour": 10,
+        "minute": 10,
+        "traffic": {
+          "hour": 10,
+          "uploaded": 3,
+          "downloaded": 9,
+          "unattributed_up": 0,
+          "unattributed_down": 0,
+          "samples": 1,
+          "gap_seconds": 0.0,
+          "covered_seconds": 2.0,
+          "legacy_coverage": false
+        },
+        "apps": [
+          {
+            "app": "Code.exe",
+            "uploaded": 3,
+            "downloaded": 9
+          }
+        ]
+      }
+    ],
+    "targets": [
+      {
+        "day": "2026-11-11",
+        "hour": null,
+        "minute": null,
+        "rows": [
+          {
+            "app": "example.com",
+            "uploaded": 20,
+            "downloaded": 40
+          },
+          {
+            "app": "目标未知",
+            "uploaded": 7,
+            "downloaded": 15
+          }
+        ]
+      },
+      {
+        "day": "2026-11-12",
+        "hour": null,
+        "minute": null,
+        "rows": [
+          {
+            "app": "example.com",
+            "uploaded": 8,
+            "downloaded": 16
+          },
+          {
+            "app": "历史未记录域名",
+            "uploaded": 3,
+            "downloaded": 9
+          }
+        ]
+      },
+      {
+        "day": "2026-11-12",
+        "hour": 0,
+        "minute": null,
+        "rows": [
+          {
+            "app": "example.com",
+            "uploaded": 8,
+            "downloaded": 16
+          }
+        ]
+      },
+      {
+        "day": "2026-11-12",
+        "hour": 0,
+        "minute": 0,
+        "rows": [
+          {
+            "app": "example.com",
+            "uploaded": 8,
+            "downloaded": 16
+          }
+        ]
+      },
+      {
+        "day": "2026-11-12",
+        "hour": 10,
+        "minute": 10,
+        "rows": [
+          {
+            "app": "历史未记录域名",
+            "uploaded": 3,
+            "downloaded": 9
+          }
+        ]
+      }
+    ]
+  },
+  "snapshot_sql": "BEGIN TRANSACTION;\nCREATE TABLE apps (\n                    day TEXT NOT NULL,\n                    hour INTEGER NOT NULL CHECK (hour BETWEEN 0 AND 23),\n                    app TEXT NOT NULL COLLATE NOCASE,\n                    uploaded INTEGER NOT NULL,\n                    downloaded INTEGER NOT NULL,\n                    PRIMARY KEY (day, hour, app)\n                );\nINSERT INTO \"apps\" VALUES('2026-11-11',23,'Code.exe',27,55);\nINSERT INTO \"apps\" VALUES('2026-11-11',23,'',1,2);\nINSERT INTO \"apps\" VALUES('2026-11-12',0,'Code.exe',8,16);\nINSERT INTO \"apps\" VALUES('2026-11-12',10,'Code.exe',3,9);\nCREATE TABLE checkpoint (\n                    id INTEGER PRIMARY KEY CHECK (id = 1),\n                    sampled_at REAL NOT NULL\n                );\nINSERT INTO \"checkpoint\" VALUES(1,1794449699.0);\nCREATE TABLE hours (\n                    day TEXT NOT NULL,\n                    hour INTEGER NOT NULL CHECK (hour BETWEEN 0 AND 23),\n                    samples INTEGER NOT NULL DEFAULT 0,\n                    gap_seconds REAL NOT NULL DEFAULT 0,\n                    unattributed_up INTEGER NOT NULL DEFAULT 0,\n                    unattributed_down INTEGER NOT NULL DEFAULT 0,\n                    unmatched_up INTEGER NOT NULL DEFAULT 0,\n                    unmatched_down INTEGER NOT NULL DEFAULT 0, covered_seconds REAL NOT NULL DEFAULT 0, legacy_coverage INTEGER NOT NULL DEFAULT 0,\n                    PRIMARY KEY (day, hour)\n                );\nINSERT INTO \"hours\" VALUES('2026-11-11',23,2,0.0,0,0,4,-2,301.0,0);\nINSERT INTO \"hours\" VALUES('2026-11-12',0,2,300.0,0,0,0,0,1.0,0);\nINSERT INTO \"hours\" VALUES('2026-11-12',10,1,0.0,0,0,0,0,2.0,0);\nCREATE TABLE minute_apps (\n                    bucket INTEGER NOT NULL REFERENCES minutes(bucket) ON DELETE CASCADE,\n                    app TEXT NOT NULL COLLATE NOCASE,\n                    uploaded INTEGER NOT NULL,\n                    downloaded INTEGER NOT NULL,\n                    PRIMARY KEY (bucket, app)\n                );\nINSERT INTO \"minute_apps\" VALUES(1794412200,'Code.exe',20,40);\nINSERT INTO \"minute_apps\" VALUES(1794412500,'code.EXE',7,15);\nINSERT INTO \"minute_apps\" VALUES(1794412500,'',1,2);\nINSERT INTO \"minute_apps\" VALUES(1794412800,'Code.exe',8,16);\nINSERT INTO \"minute_apps\" VALUES(1794449400,'Code.exe',3,9);\nCREATE TABLE minute_residuals (\n                    bucket INTEGER NOT NULL REFERENCES minutes(bucket) ON DELETE CASCADE,\n                    segment REAL NOT NULL,\n                    up INTEGER NOT NULL,\n                    down INTEGER NOT NULL,\n                    PRIMARY KEY (bucket, segment)\n                );\nINSERT INTO \"minute_residuals\" VALUES(1794412500,1794412499.0,4,-2);\nINSERT INTO \"minute_residuals\" VALUES(1794412800,1794412499.0,0,0);\nCREATE TABLE minute_targets (\n                    bucket INTEGER NOT NULL REFERENCES minutes(bucket) ON DELETE CASCADE,\n                    app TEXT NOT NULL COLLATE NOCASE, target TEXT NOT NULL,\n                    uploaded INTEGER NOT NULL, downloaded INTEGER NOT NULL,\n                    PRIMARY KEY (bucket, app, target)\n                );\nINSERT INTO \"minute_targets\" VALUES(1794412200,'Code.exe','example.com',20,40);\nINSERT INTO \"minute_targets\" VALUES(1794412500,'code.EXE','目标未知',7,15);\nINSERT INTO \"minute_targets\" VALUES(1794412500,'','[2001:db8::1]:443',1,2);\nINSERT INTO \"minute_targets\" VALUES(1794412800,'Code.exe','example.com',8,16);\nCREATE TABLE minutes (\n                    bucket INTEGER PRIMARY KEY,\n                    samples INTEGER NOT NULL DEFAULT 0,\n                    covered_seconds REAL NOT NULL DEFAULT 0,\n                    gap_seconds REAL NOT NULL DEFAULT 0,\n                    unattributed_up INTEGER NOT NULL DEFAULT 0,\n                    unattributed_down INTEGER NOT NULL DEFAULT 0\n                );\nINSERT INTO \"minutes\" VALUES(1794412200,1,1.0,0.0,0,0);\nINSERT INTO \"minutes\" VALUES(1794412500,1,300.0,0.0,0,0);\nINSERT INTO \"minutes\" VALUES(1794412800,1,1.0,299.0,0,0);\nINSERT INTO \"minutes\" VALUES(1794413100,1,0.0,1.0,0,0);\nINSERT INTO \"minutes\" VALUES(1794449400,1,2.0,0.0,0,0);\nCREATE TABLE spike_settings (\n                    id INTEGER PRIMARY KEY CHECK (id = 1),\n                    enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),\n                    threshold_mib INTEGER NOT NULL CHECK (threshold_mib > 0)\n                );\nINSERT INTO \"spike_settings\" VALUES(1,1,127);\nCREATE TABLE targets (\n                    day TEXT NOT NULL, hour INTEGER NOT NULL,\n                    app TEXT NOT NULL COLLATE NOCASE, target TEXT NOT NULL,\n                    uploaded INTEGER NOT NULL, downloaded INTEGER NOT NULL,\n                    PRIMARY KEY (day, hour, app, target)\n                );\nINSERT INTO \"targets\" VALUES('2026-11-11',23,'Code.exe','example.com',20,40);\nINSERT INTO \"targets\" VALUES('2026-11-11',23,'code.EXE','目标未知',7,15);\nINSERT INTO \"targets\" VALUES('2026-11-11',23,'','[2001:db8::1]:443',1,2);\nINSERT INTO \"targets\" VALUES('2026-11-12',0,'Code.exe','example.com',8,16);\nCOMMIT;",
+  "legacy_digest": "d424c669a43f560b457323bfc908304c098677de0288298908b8548adc315f1f"
+}
