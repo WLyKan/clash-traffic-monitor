@@ -31,6 +31,18 @@
 
 重建开发期仓储夹具：`python -B tools/export_store_fixtures.py`；常规 Rust 回归直接读取已提交 JSON。
 
+本功能本地提交：`d968206`（`feat(storage): 兼容迁移 SQLite 历史与目标统计`）。
+
+## 后台运行时与查询边界
+
+`monitor-runtime` 持有同一物理目录的写锁，由独立采集线程一秒采样、串行提交 SQLite 和设置；UI 查询通过有限 DTO，字节使用十进制字符串。离线保留历史查询能力，目标五分钟查询与应用明细使用相同14天有效窗口。数据目录、原命令行参数和注册表登录命令保持兼容。
+
+`collector.lock` 与旧 Python 首字节锁双向互斥。每个数据目录独立的回环端口只接受随机令牌后的“显示窗口”请求，不提供数据读写接口；目录不同的测试实例不互相拦截。只读 `--diagnostics` 不创建目录、不迁移库，明确标注 immutable 主库快照可能不包含未合并 WAL；安装备份另走 SQLite backup API。
+
+2026-11-13 `cargo test -p monitor-runtime -- --nocapture`：17 项通过（10 单测、5 DTO/隔离 SQLite、2 原版 Python 跨进程写锁）。显式设置 `CLASH_LEGACY_PYTHON` 后实际验证 `msvcrt ↔ fs2` 双向互斥、释放后重取、不同目录并行及 junction 同物理目录互斥；临时 junction 和目录均清理。其它回归覆盖未来筛选、未来五分钟、大整数字符串、日行省略 `hour`、设置未变化不重置提醒窗口、小时选择键与前端一致、CLI 缺少目录拒绝及只读旧库诊断。
+
+真实桌面壳、自启开关与最终默认入口仍待后续 Windows 验收；本阶段不据命令行参数单测宣称系统入口已更新。
+
 ## 尚待完成的交付门禁
 
 OpenSpec `openspec/changes/migrate-tauri-rust/tasks.md` 记录当前已验证项，其余任务保持未勾选。SQLite、React 和桌面运行时按独立功能验证提交；最终还须完成真实 WebView、打包 EXE / NSIS、隔离采集与托盘退出、真实入口备份安装、历史/设置/账本对账和三条启动入口物理目录验收。编译与模拟界面通过不代表安装交付完成。
