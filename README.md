@@ -56,6 +56,8 @@ Windows 本地托盘工具，记录经过 Clash 的代理流量。可以按日�
 
 ## 本地开发
 
+Tauri/Rust 迁移在独立工作分支推进，交付进度与兼容性验证见 [迁移记录](docs/tauri-migration.md)。Rust 核心与窗口和 SQLite 分离，开发机安装 Rust MSVC 工具链及 Visual Studio C++ Build Tools 后，可从仓库根目录运行 `cargo test -p monitor-core`。固定 Python 行为夹具已入库，Rust 测试无需 Python；原 Python 源码仅作迁移期行为对照，后续桌面发行不携带 Python。
+
 需要 Windows 和 Python 3.13。以下命令从项目根目录执行。
 
 ```powershell

@@ -6,3 +6,11 @@ dist/
 *.spec
 *.sqlite3*
 mihomo-probe-*/
+
+node_modules/
+frontend-dist/
+dist-web/
+target/
+playwright-report/
+test-results/
+src-tauri/gen/schemas/

@@ -1,0 +1,648 @@
+{
+  "version": 1,
+  "deltas": [
+    {
+      "name": "confirmed-proxy-direct-unknown-and-first-seen-baseline",
+      "previous": {
+        "sampled_at": 100,
+        "upload_total": 1000,
+        "download_total": 2000,
+        "connections": [
+          {
+            "id": "old",
+            "started_at": 0,
+            "app": "Code.exe",
+            "route": "proxy",
+            "uploaded": 20,
+            "downloaded": 30,
+            "target": "目标未知"
+          },
+          {
+            "id": "direct",
+            "started_at": 0,
+            "app": "Code.exe",
+            "route": "direct",
+            "uploaded": 0,
+            "downloaded": 0,
+            "target": "目标未知"
+          }
+        ],
+        "generation": 0,
+        "completed_at": null
+      },
+      "current": {
+        "sampled_at": 101,
+        "upload_total": 1090,
+        "download_total": 2290,
+        "connections": [
+          {
+            "id": "old",
+            "started_at": 0,
+            "app": "Code.exe",
+            "route": "proxy",
+            "uploaded": 40,
+            "downloaded": 50,
+            "target": "目标未知"
+          },
+          {
+            "id": "direct",
+            "started_at": 0,
+            "app": "Code.exe",
+            "route": "direct",
+            "uploaded": 30,
+            "downloaded": 200,
+            "target": "目标未知"
+          },
+          {
+            "id": "unknown",
+            "started_at": 100.2,
+            "app": "Code.exe",
+            "route": "unknown",
+            "uploaded": 10,
+            "downloaded": 10,
+            "target": "目标未知"
+          },
+          {
+            "id": "no-app",
+            "started_at": 100.4,
+            "app": null,
+            "route": "proxy",
+            "uploaded": 5,
+            "downloaded": 5,
+            "target": "目标未知"
+          },
+          {
+            "id": "missed",
+            "started_at": 0,
+            "app": "Code.exe",
+            "route": "proxy",
+            "uploaded": 500,
+            "downloaded": 800,
+            "target": "目标未知"
+          }
+        ],
+        "generation": 0,
+        "completed_at": null
+      },
+      "expected": {
+        "apps": {
+          "Code.exe": [
+            20,
+            20
+          ],
+          "": [
+            5,
+            5
+          ]
+        },
+        "unknown_route": [
+          10,
+          10
+        ],
+        "unmatched": [
+          25,
+          55
+        ],
+        "targets": [
+          [
+            "",
+            "目标未知",
+            5,
+            5
+          ],
+          [
+            "Code.exe",
+            "目标未知",
+            20,
+            20
+          ]
+        ]
+      }
+    },
+    {
+      "name": "request-overlap-first-seen-is-baseline",
+      "previous": {
+        "sampled_at": 100,
+        "upload_total": 10,
+        "download_total": 10,
+        "connections": [],
+        "generation": 0,
+        "completed_at": 100.1
+      },
+      "current": {
+        "sampled_at": 101,
+        "upload_total": 15,
+        "download_total": 15,
+        "connections": [
+          {
+            "id": "new",
+            "started_at": 100.05,
+            "app": "Code.exe",
+            "route": "proxy",
+            "uploaded": 12,
+            "downloaded": 12,
+            "target": "目标未知"
+          }
+        ],
+        "generation": 0,
+        "completed_at": null
+      },
+      "expected": {
+        "apps": {},
+        "unknown_route": [
+          0,
+          0
+        ],
+        "unmatched": [
+          5,
+          5
+        ],
+        "targets": []
+      }
+    },
+    {
+      "name": "new-connection-cumulative-and-ended-tail",
+      "previous": {
+        "sampled_at": 100,
+        "upload_total": 100,
+        "download_total": 100,
+        "connections": [
+          {
+            "id": "ended",
+            "started_at": 0,
+            "app": "Code.exe",
+            "route": "proxy",
+            "uploaded": 40,
+            "downloaded": 40,
+            "target": "目标未知"
+          }
+        ],
+        "generation": 0,
+        "completed_at": null
+      },
+      "current": {
+        "sampled_at": 101,
+        "upload_total": 130,
+        "download_total": 140,
+        "connections": [
+          {
+            "id": "new",
+            "started_at": 100.2,
+            "app": "Code.exe",
+            "route": "proxy",
+            "uploaded": 20,
+            "downloaded": 30,
+            "target": "目标未知"
+          }
+        ],
+        "generation": 0,
+        "completed_at": null
+      },
+      "expected": {
+        "apps": {
+          "Code.exe": [
+            20,
+            30
+          ]
+        },
+        "unknown_route": [
+          0,
+          0
+        ],
+        "unmatched": [
+          10,
+          10
+        ],
+        "targets": [
+          [
+            "Code.exe",
+            "目标未知",
+            20,
+            30
+          ]
+        ]
+      }
+    },
+    {
+      "name": "reused-id-new-start",
+      "previous": {
+        "sampled_at": 100,
+        "upload_total": 100,
+        "download_total": 100,
+        "connections": [
+          {
+            "id": "same",
+            "started_at": 0,
+            "app": "Code.exe",
+            "route": "proxy",
+            "uploaded": 500,
+            "downloaded": 500,
+            "target": "目标未知"
+          }
+        ],
+        "generation": 0,
+        "completed_at": null
+      },
+      "current": {
+        "sampled_at": 101,
+        "upload_total": 110,
+        "download_total": 120,
+        "connections": [
+          {
+            "id": "same",
+            "started_at": 100.2,
+            "app": "Code.exe",
+            "route": "proxy",
+            "uploaded": 10,
+            "downloaded": 20,
+            "target": "目标未知"
+          }
+        ],
+        "generation": 0,
+        "completed_at": null
+      },
+      "expected": {
+        "apps": {
+          "Code.exe": [
+            10,
+            20
+          ]
+        },
+        "unknown_route": [
+          0,
+          0
+        ],
+        "unmatched": [
+          0,
+          0
+        ],
+        "targets": [
+          [
+            "Code.exe",
+            "目标未知",
+            10,
+            20
+          ]
+        ]
+      }
+    },
+    {
+      "name": "non-atomic-signed-residual",
+      "previous": {
+        "sampled_at": 100,
+        "upload_total": 100,
+        "download_total": 100,
+        "connections": [
+          {
+            "id": "same",
+            "started_at": 0,
+            "app": "Code.exe",
+            "route": "proxy",
+            "uploaded": 100,
+            "downloaded": 100,
+            "target": "目标未知"
+          }
+        ],
+        "generation": 0,
+        "completed_at": null
+      },
+      "current": {
+        "sampled_at": 101,
+        "upload_total": 100,
+        "download_total": 200,
+        "connections": [
+          {
+            "id": "same",
+            "started_at": 0,
+            "app": "Code.exe",
+            "route": "proxy",
+            "uploaded": 200,
+            "downloaded": 100,
+            "target": "目标未知"
+          }
+        ],
+        "generation": 0,
+        "completed_at": null
+      },
+      "expected": {
+        "apps": {
+          "Code.exe": [
+            100,
+            0
+          ]
+        },
+        "unknown_route": [
+          0,
+          0
+        ],
+        "unmatched": [
+          -100,
+          100
+        ],
+        "targets": [
+          [
+            "Code.exe",
+            "目标未知",
+            100,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "name": "target-learned-and-counter-reset",
+      "previous": {
+        "sampled_at": 100,
+        "upload_total": 100,
+        "download_total": 100,
+        "connections": [
+          {
+            "id": "same",
+            "started_at": 0,
+            "app": "Code.exe",
+            "route": "proxy",
+            "uploaded": 20,
+            "downloaded": 20,
+            "target": "目标未知"
+          }
+        ],
+        "generation": 0,
+        "completed_at": null
+      },
+      "current": {
+        "sampled_at": 101,
+        "upload_total": 110,
+        "download_total": 120,
+        "connections": [
+          {
+            "id": "same",
+            "started_at": 0,
+            "app": "Code.exe",
+            "route": "proxy",
+            "uploaded": 30,
+            "downloaded": 10,
+            "target": "example.com"
+          }
+        ],
+        "generation": 0,
+        "completed_at": null
+      },
+      "expected": {
+        "apps": {
+          "Code.exe": [
+            10,
+            0
+          ]
+        },
+        "unknown_route": [
+          0,
+          0
+        ],
+        "unmatched": [
+          0,
+          20
+        ],
+        "targets": [
+          [
+            "Code.exe",
+            "example.com",
+            10,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "name": "hour-and-five-minute-boundary",
+      "previous": {
+        "sampled_at": 1794345599,
+        "upload_total": 20,
+        "download_total": 30,
+        "connections": [
+          {
+            "id": "same",
+            "started_at": 0,
+            "app": "Code.exe",
+            "route": "proxy",
+            "uploaded": 20,
+            "downloaded": 30,
+            "target": "目标未知"
+          }
+        ],
+        "generation": 0,
+        "completed_at": null
+      },
+      "current": {
+        "sampled_at": 1794345600,
+        "upload_total": 25,
+        "download_total": 39,
+        "connections": [
+          {
+            "id": "same",
+            "started_at": 0,
+            "app": "Code.exe",
+            "route": "proxy",
+            "uploaded": 25,
+            "downloaded": 39,
+            "target": "2001:db8::1"
+          }
+        ],
+        "generation": 0,
+        "completed_at": null
+      },
+      "expected": {
+        "apps": {
+          "Code.exe": [
+            5,
+            9
+          ]
+        },
+        "unknown_route": [
+          0,
+          0
+        ],
+        "unmatched": [
+          0,
+          0
+        ],
+        "targets": [
+          [
+            "Code.exe",
+            "2001:db8::1",
+            5,
+            9
+          ]
+        ]
+      }
+    }
+  ],
+  "targets": [
+    {
+      "metadata": {
+        "host": " EXAMPLE.COM... "
+      },
+      "expected": "example.com"
+    },
+    {
+      "metadata": {
+        "host": "127.0.0.1",
+        "sniffHost": "Sniff.Example."
+      },
+      "expected": "sniff.example"
+    },
+    {
+      "metadata": {
+        "sniffHost": "only-sniff.example"
+      },
+      "expected": "only-sniff.example"
+    },
+    {
+      "metadata": {
+        "destinationIP": "192.0.2.1"
+      },
+      "expected": "192.0.2.1"
+    },
+    {
+      "metadata": {
+        "destinationIP": "[2001:0DB8:0:0::1]"
+      },
+      "expected": "2001:db8::1"
+    },
+    {
+      "metadata": {},
+      "expected": "目标未知"
+    },
+    {
+      "metadata": {
+        "host": "-bad",
+        "sniffHost": "good.example"
+      },
+      "expected": "good.example"
+    },
+    {
+      "metadata": {
+        "host": "例子.测试"
+      },
+      "expected": "xn--fsqu00a.xn--0zwm56d"
+    },
+    {
+      "metadata": {
+        "host": "faß.de"
+      },
+      "expected": "fass.de"
+    },
+    {
+      "metadata": {
+        "host": "a_b.example",
+        "destinationIP": "::1"
+      },
+      "expected": "::1"
+    },
+    {
+      "metadata": {
+        "host": "[::1]",
+        "sniffHost": "[::2]",
+        "destinationIP": "::ffff:192.0.2.1"
+      },
+      "expected": "::ffff:192.0.2.1"
+    },
+    {
+      "metadata": {
+        "host": "a..b"
+      },
+      "expected": "目标未知"
+    },
+    {
+      "metadata": {
+        "host": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com"
+      },
+      "expected": "目标未知"
+    },
+    {
+      "metadata": {
+        "host": "https://example.com"
+      },
+      "expected": "目标未知"
+    },
+    {
+      "metadata": {
+        "host": "123"
+      },
+      "expected": "123"
+    },
+    {
+      "metadata": {
+        "host": "foo‌bar.example"
+      },
+      "expected": "foobar.example"
+    }
+  ],
+  "alerts": {
+    "start": 1794337200.0,
+    "seconds": 1800,
+    "events": [
+      {
+        "second": 0,
+        "apps": {
+          "Code.exe": [
+            1048576,
+            0
+          ]
+        }
+      },
+      {
+        "second": 899,
+        "apps": {
+          "code.EXE": [
+            0,
+            50
+          ],
+          "other.exe": [
+            0,
+            100
+          ]
+        }
+      },
+      {
+        "second": 900,
+        "apps": {
+          "code.EXE": [
+            1048576,
+            0
+          ]
+        }
+      },
+      {
+        "second": 1799,
+        "apps": {
+          "": [
+            0,
+            1
+          ]
+        }
+      }
+    ],
+    "expected": [
+      {
+        "start": 1794337200.0,
+        "end": 1794338100.0,
+        "total": 1048726,
+        "contributors": [
+          "Code.exe",
+          "other.exe"
+        ],
+        "peak_at": 1794337200
+      },
+      {
+        "start": 1794338100.0,
+        "end": 1794339000.0,
+        "total": 1048577,
+        "contributors": [
+          "code.EXE",
+          ""
+        ],
+        "peak_at": 1794338100
+      }
+    ]
+  }
+}
