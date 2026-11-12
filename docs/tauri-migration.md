@@ -70,6 +70,14 @@ python -B tools/verify_rust_mihomo.py --reader-exe <target目录>/debug/verify_m
 
 原命名管道与 SID 身份另由核心原生测试验证。真实当前 Windows 用户下的 Rust `--diagnostics` 已只读确认默认物理库仍为 `Documents\ClashTrafficMonitor\traffic.sqlite3`，4个历史日期可读；自定义目录及 junction 的物理同库写锁双向验证见运行时章节。开始菜单和登录命令的最终更新、实际运行验收仍待进行。
 
+## 真实历史冻结副本接管
+
+`real_snapshot.rs` 是显式启用的兼容验收，必须设置 `CLASH_COMPAT_SNAPSHOT` 指向本任务 D 盘 `preflight-*` 下无 WAL 的一致性冻结副本；未设置时明确输出 SKIP，常规测试通过不能替代这项正式执行。源以 immutable 方式只读，所有迁移与采样写入新的 D 盘临时副本。
+
+2026-11-13 正式执行该测试通过：10 张表、6241 条原行、4 个历史日期、2 条恢复账本在 `Store::open` 后逐行保留；两次合成采样之后旧日期字节、旧应用/目标/小时/五分钟记录、提醒设置和导入账本保持，检查点前进，新应用三个时段范围的目标上传/下载为11/23字节且守恒。允许中断期间增加真实 gap_seconds。源 SHA-256 前后完全一致，临时副本清理，原生产程序没有停止或更新。
+
+另外在 Codex 沙箱工具上下文与真实当前 Windows 用户上下文分别只读核对默认路径，解析出的数据库、设备标识和文件 ID 一致，避免仅凭路径字符串判断同库。真实开始菜单/登录启动的新程序验收仍保留为最终门禁。
+
 ## 尚待完成的交付门禁
 
 OpenSpec `openspec/changes/migrate-tauri-rust/tasks.md` 记录当前已验证项，其余任务保持未勾选。SQLite、React 和桌面运行时按独立功能验证提交；最终还须完成真实 WebView、打包 EXE / NSIS、隔离采集与托盘退出、真实入口备份安装、历史/设置/账本对账和三条启动入口物理目录验收。编译与模拟界面通过不代表安装交付完成。
