@@ -1,0 +1,52 @@
+import { expect, test } from '@playwright/test';
+
+test('real ECharts render, empty/zero hover, stationary refresh and complete drilldown', async ({ page }, testInfo) => {
+  const failures: string[] = [];
+  page.on('pageerror', (error) => failures.push(error.message));
+  await page.goto('/?demo=1');
+  await expect(page.getByText(/演示数据 · 当前为浏览器预览/)).toBeVisible();
+  await expect(page.locator('canvas')).toHaveCount(1);
+  await page.getByLabel('日期', { exact: true }).fill('2026-11-01');
+  await page.getByRole('button', { name: '查看', exact: true }).click();
+  await expect(page.getByRole('combobox', { name: '小时', exact: true })).toHaveValue('9');
+  await page.getByTestId('column-1').hover();
+  await expect(page.getByRole('tooltip')).toContainText('已采集，代理流量 0 B');
+  await page.getByTestId('column-23').hover();
+  await expect(page.getByRole('tooltip')).toContainText('23:00–24:00');
+  await expect(page.getByRole('tooltip')).toContainText('该时段未采集');
+  const bounds = await page.getByRole('tooltip').boundingBox();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(1280);
+  await page.getByTestId('column-9').hover();
+  const first = await page.getByRole('tooltip').textContent();
+  await expect.poll(() => page.getByRole('tooltip').textContent(), { timeout: 7000 }).not.toBe(first);
+  await page.getByRole('heading', { name: 'Clash 流量监控' }).hover();
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  await page.getByRole('button', { name: 'example-browser.exe' }).click();
+  await expect(page.getByRole('table', { name: '访问目标流量排行' })).toContainText('example.com');
+  await page.getByRole('combobox', { name: '五分钟区间' }).selectOption('15');
+  await expect(page.getByRole('region', { name: '应用排行', exact: true })).toContainText('09:15–09:20');
+  await page.getByRole('combobox', { name: '目标排行范围' }).selectOption('day');
+  await expect(page.getByRole('region', { name: '访问目标排行', exact: true })).toContainText('所选日期整日');
+  await page.screenshot({ path: testInfo.outputPath('desktop.png'), fullPage: true });
+  await page.getByRole('button', { name: '最近 7 天' }).click();
+  await expect(page.getByTestId('plot-columns').locator('button')).toHaveCount(7);
+  await expect(page.getByRole('combobox', { name: '小时', exact: true })).toBeDisabled();
+  await page.getByTestId('plot-columns').locator('button').first().click();
+  await expect(page.getByRole('combobox', { name: '小时', exact: true })).toBeEnabled();
+  expect(failures).toEqual([]);
+});
+
+test('narrow Windows window keeps controls, table selection and inline settings usable', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 760, height: 900 });
+  await page.goto('/?demo=1');
+  await page.getByRole('button', { name: '设置', exact: true }).click();
+  await expect(page.getByRole('spinbutton', { name: '提醒阈值 MiB' })).toBeVisible();
+  await page.getByRole('spinbutton', { name: '提醒阈值 MiB' }).fill('750');
+  await page.getByRole('button', { name: '保存设置' }).click();
+  await expect(page.getByText('设置已保存')).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: /登录 Windows/ })).toBeDisabled();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
+  expect(overflow).toBe(false);
+  await page.screenshot({ path: testInfo.outputPath('narrow-settings.png'), fullPage: true });
+});

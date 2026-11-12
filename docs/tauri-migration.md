@@ -43,6 +43,18 @@
 
 真实桌面壳、自启开关与最终默认入口仍待后续 Windows 验收；本阶段不据命令行参数单测宣称系统入口已更新。
 
+本功能本地提交：`fccf398`（`feat(runtime): 接入后台采集与兼容启动保护`）。
+
+## React 面板与交互
+
+前端使用 React / TypeScript / Tailwind / ECharts，中文界面与设计变量见 `PRODUCT.md`、`DESIGN.md`。所有正式数据仅通过类型化 Tauri 命令；开发浏览器需显式 `?demo=1` 才显示带标识的合成数据，生产 bundle 不包含该演示实现。
+
+五种趋势以整列透明操作层覆盖绘图区，空柱与短柱也能悬停/点击。提示从当前列键与最新查询数据派生，静止刷新更新、边缘避让、移出和切换清除。小时键盘选择跟随外部下拉，日趋势保留独立焦点与回车下钻。应用、目标、小时、五分钟、整日范围和提醒深链保持上下文；旧请求响应不覆盖新筛选。原生 `data_updated` 提示与两秒轮询合并，单一面板请求串行且两秒内不重复。
+
+2026-11-13：`npm test` 17 项、`npm run build` 的类型检查与生产构建、`npm run test:ui` 2 项真实 Chromium 回归通过，覆盖整列悬停/静止刷新、日小时目标联动、设置草稿、原生提醒深链、刷新竞态和宽窄窗口。组件回归另证明“先选9时→下拉13时→右方向键14时”及多日视图不展示占位未归因0 B。浏览器通过仅证明前端，真实 Tauri IPC 和 Windows 托盘/安装门禁仍未完成。
+
+本地前端验证：先 `npm ci`，再 `npm test`、`npm run build`、`npx playwright install chromium`、`npm run test:ui`。可通过 `CLASH_FRONTEND_DIST`、`CLASH_UI_ARTIFACTS`、`PLAYWRIGHT_BROWSERS_PATH` 将生成物与浏览器缓存定向到独立磁盘目录；数据库始终由 Rust 管理。
+
 ## 尚待完成的交付门禁
 
 OpenSpec `openspec/changes/migrate-tauri-rust/tasks.md` 记录当前已验证项，其余任务保持未勾选。SQLite、React 和桌面运行时按独立功能验证提交；最终还须完成真实 WebView、打包 EXE / NSIS、隔离采集与托盘退出、真实入口备份安装、历史/设置/账本对账和三条启动入口物理目录验收。编译与模拟界面通过不代表安装交付完成。
