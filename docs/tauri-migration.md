@@ -55,6 +55,21 @@
 
 本地前端验证：先 `npm ci`，再 `npm test`、`npm run build`、`npx playwright install chromium`、`npm run test:ui`。可通过 `CLASH_FRONTEND_DIST`、`CLASH_UI_ARTIFACTS`、`PLAYWRIGHT_BROWSERS_PATH` 将生成物与浏览器缓存定向到独立磁盘目录；数据库始终由 Rust 管理。
 
+本功能本地提交：`4b1fa6a`（`feat(ui): 迁移趋势与流量排行至 React 面板`）。
+
+## 真实隔离 Mihomo 与物理目录
+
+开发期 console probe `verify_mihomo_runtime` 使用实际 Rust `MihomoSource → SamplingState → Store`，与桌面后端复用同一实现。`tools/verify_rust_mihomo.py` 只产生回环流量与保存对照证据；它不改现用内核、系统代理或 DNS。probe 要求显式认证本机控制器、新的 D 盘任务目录并拒绝复用现有库，不属于最终桌面安装包。
+
+```powershell
+cargo build -p monitor-runtime --bin verify_mihomo_runtime
+python -B tools/verify_rust_mihomo.py --reader-exe <target目录>/debug/verify_mihomo_runtime.exe --core <Mihomo路径>
+```
+
+2026-11-13，真实 Mihomo v1.19.32 的 `always` 与 `off` 两轮均通过：直连阶段仅检查点增长，应用代理量保持空；两个代理客户端上/下行持续增长。`off` 原始进程字段为空，Rust 仍通过真实 Windows TCP 四元组正确识别 curl/python。数据库的小时、5 分钟、应用、IP目标总量与逐桶守恒、完整性均通过。最终回归由主代理重跑，两轮分别66/50个样本，所有本次内核/reader子进程退出，配置中的临时密钥已脱敏。
+
+原命名管道与 SID 身份另由核心原生测试验证。真实当前 Windows 用户下的 Rust `--diagnostics` 已只读确认默认物理库仍为 `Documents\ClashTrafficMonitor\traffic.sqlite3`，4个历史日期可读；自定义目录及 junction 的物理同库写锁双向验证见运行时章节。开始菜单和登录命令的最终更新、实际运行验收仍待进行。
+
 ## 尚待完成的交付门禁
 
 OpenSpec `openspec/changes/migrate-tauri-rust/tasks.md` 记录当前已验证项，其余任务保持未勾选。SQLite、React 和桌面运行时按独立功能验证提交；最终还须完成真实 WebView、打包 EXE / NSIS、隔离采集与托盘退出、真实入口备份安装、历史/设置/账本对账和三条启动入口物理目录验收。编译与模拟界面通过不代表安装交付完成。
